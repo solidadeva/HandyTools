@@ -1,5 +1,6 @@
 """Original code-native vector artwork for the Handy family."""
 from pathlib import Path
+import sys
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon, QPixmap, QPainter
 from PySide6.QtSvg import QSvgRenderer
@@ -31,6 +32,8 @@ def svg(name, color='#8e8e93', tile=False):
 
 
 def app_icon(name, color='#8e8e93', size=64, tile=False):
+    if name=='genyconnect':
+        return QIcon(str(Path(getattr(sys,'_MEIPASS',Path(__file__).parent))/'assets/icons/genyconnect.png'))
     data = svg(name, color, tile).encode()
     pm = QPixmap(size*2,size*2); pm.fill(Qt.GlobalColor.transparent)
     p = QPainter(pm); QSvgRenderer(data).render(p); p.end()

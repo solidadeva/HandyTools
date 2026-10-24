@@ -80,7 +80,7 @@ class SettingsDialog(QDialog):
         if self.task:
             return
         if self.stage:
-            if self.manager.setup_task or any(p.is_busy() for p in self.manager.pages()):
+            if self.manager.setup_task or self.manager.external_busy() or any(p.is_busy() for p in self.manager.pages()):
                 self.status.setText('ابتدا عملیات فعال را تمام یا لغو کنید؛ سپس نصب آپدیت را بزنید.');return
             try:
                 start_installer(self.root,self.stage,os.getpid())

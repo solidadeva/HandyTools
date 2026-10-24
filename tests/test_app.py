@@ -72,6 +72,8 @@ class AppTests(unittest.TestCase):
         QTest.mouseClick(carousel, Qt.MouseButton.LeftButton, pos=carousel.arrow_rect(True).center().toPoint())
         self.assertEqual(carousel.selected, 1)
         QTest.mouseClick(carousel, Qt.MouseButton.LeftButton, pos=carousel.arrow_rect(True).center().toPoint())
+        self.assertEqual(carousel.selected, 2)
+        QTest.mouseClick(carousel, Qt.MouseButton.LeftButton, pos=carousel.arrow_rect(True).center().toPoint())
         self.assertEqual(carousel.selected, 0)
         QTest.mousePress(carousel, Qt.MouseButton.LeftButton, pos=QPoint(600,230))
         QTest.mouseRelease(carousel, Qt.MouseButton.LeftButton, pos=QPoint(480,230))
@@ -79,13 +81,16 @@ class AppTests(unittest.TestCase):
         wheel = QWheelEvent(QPointF(100,100), QPointF(100,100), QPoint(0,0), QPoint(0,-120),
                             Qt.MouseButton.NoButton, Qt.KeyboardModifier.NoModifier, Qt.ScrollPhase.ScrollUpdate, False)
         carousel.wheelEvent(wheel)
-        self.assertEqual(carousel.selected, 0)
+        self.assertEqual(carousel.selected, 2)
+        carousel.select(0)
+        initial_count=len(carousel.tools)
         for i in range(7):
             self.w.register_tool(ToolSpec('extra'+str(i),'Extra '+str(i),'convert','#8879cc','convert'), ToolWindow)
-        self.assertEqual(len(carousel.tools), 9)
-        carousel.select(8); QTest.qWait(260)
-        self.assertEqual(carousel.offset, 6)
-        self.assertTrue(carousel.rect().contains(carousel.item_rect(8).center().toPoint()))
+        self.assertEqual(len(carousel.tools), initial_count+7)
+        last=len(carousel.tools)-1
+        carousel.select(last); QTest.qWait(260)
+        self.assertEqual(carousel.offset, len(carousel.tools)-3)
+        self.assertTrue(carousel.rect().contains(carousel.item_rect(last).center().toPoint()))
         carousel.step(1); self.assertEqual(carousel.selected, 0)
         with self.assertRaises(ValueError):
             self.w.register_tool(carousel.tools[0], ToolWindow)
@@ -100,12 +105,45 @@ class AppTests(unittest.TestCase):
         self.w.resize(600,280);self.app.processEvents()
         self.assertEqual([int(n) for n in self.settings.value('launcher_size')],[600,280])
         self.assertTrue(self.w.resize_grip.isVisible())
-        with patch('update_ui.latest_release',return_value={'version':'0.4.0'}), patch('update_ui.plan_update',return_value={'changed':['app.py'],'bytes':1024}):
+        with patch('update_ui.latest_release',return_value={'version':'0.5.0'}), patch('update_ui.plan_update',return_value={'changed':['app.py'],'bytes':1024}):
             QTest.mouseClick(dialog.action,Qt.MouseButton.LeftButton)
             self.wait_until(lambda:dialog.task is None)
-        self.assertIn('0.4.0',dialog.status.text())
+        self.assertIn('0.5.0',dialog.status.text())
         self.assertEqual(dialog.action.text(),'دریافت آپدیت')
         dialog.close()
+
+    def test_window_controls_and_triangle_pulse(self):
+        normal=self.w.size()
+        QTest.mouseClick(self.w.maximize_button,Qt.MouseButton.LeftButton)
+        self.app.processEvents();self.assertTrue(self.w.isMaximized())
+        self.assertFalse(self.w.resize_grip.isVisible())
+        QTest.mouseClick(self.w.maximize_button,Qt.MouseButton.LeftButton)
+        self.app.processEvents();self.assertFalse(self.w.isMaximized())
+        self.assertEqual(self.w.size(),normal)
+        self.assertEqual(self.w.resize_grip.pulse.duration(),5000)
+        self.w.resize_grip.pulse.setCurrentTime(0);dim=self.w.resize_grip.get_pulse()
+        self.w.resize_grip.pulse.setCurrentTime(2500)
+        self.assertGreater(self.w.resize_grip.get_pulse(),dim)
+
+    def test_genyconnect_is_on_demand_and_opens_installed_app(self):
+        from external_ui import InstallTask
+        spec=next(x for x in self.w.carousel.tools if x.id=='genyconnect')
+        self.assertTrue(spec.external)
+        self.assertNotIn('genyconnect',self.w.carousel.installed_ids)
+        def fake_install(task):
+            task.phase.emit('download');task.failure.emit('test offline')
+        with patch.object(InstallTask,'run',fake_install):
+            self.w.open_tool('genyconnect')
+            self.wait_until(lambda:not self.w.external_busy())
+        self.assertTrue(self.w.external_dialog.isVisible())
+        self.assertIn('test offline',self.w.external_dialog.status.text())
+        self.w.external_dialog.close()
+        installed=self.folder/'GenyConnect.exe';installed.write_bytes(b'app')
+        with patch('external_apps.detect_installed',return_value=installed), patch('external_apps.launch_installed') as launch:
+            self.w.open_tool('genyconnect');launch.assert_called_once_with(installed)
+        self.assertIn('genyconnect',self.w.carousel.installed_ids)
+        task=InstallTask();self.assertTrue(task.cancel())
+        task=InstallTask();task.installing=True;self.assertFalse(task.cancel())
 
     def test_drop_paths_and_reject_multiple_or_disabled(self):
         source = self.folder/'فایل فارسی with spaces.txt'; source.write_text('test')

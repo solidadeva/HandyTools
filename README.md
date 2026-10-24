@@ -16,6 +16,10 @@ Versions 0.1/0.2 need one initial upgrade to 0.3.0 to obtain the updater. Frozen
 
 ## Launcher
 
+Version 0.4.0 adds the official **GenyConnect** launcher entry. It starts uninstalled; click to download and install the correct official platform package. SHA-256 is checked before execution, and an existing installation opens directly. GenyConnect binaries are not bundled. Windows uses the upstream NSIS installer and normal UAC; macOS uses a user Applications installation, and Linux uses the official AppImage. Native Windows/macOS installation still needs platform validation.
+
+The drawer now has continuous corners, traffic-light window controls, a sharp lower-right corner with a tiny five-second pulsing resize triangle, and frameless bright/dim app selection with a blue dot.
+
 The v0.3.1 interface uses an Apple-inspired visual language: silver/graphite surfaces, fine separators, blue controls and original continuous-corner gradient icons. Existing structure and behavior are preserved.
 
 - Smaller initial size; drag the lower-right grip to resize. Last size is remembered.

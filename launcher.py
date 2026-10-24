@@ -7,7 +7,7 @@ from pathlib import Path
 from PySide6.QtCore import (Qt, QRectF, QPoint, QPointF, QSize, QSettings, QTimer, Signal,
                            Property, QPropertyAnimation, QEasingCurve)
 from PySide6.QtGui import (QColor, QPainter, QPen, QFont, QCursor, QShortcut,
-                          QKeySequence, QGuiApplication, QLinearGradient)
+                          QKeySequence, QGuiApplication, QLinearGradient, QPainterPath, QPolygonF)
 from PySide6.QtWidgets import (QMainWindow, QWidget, QPushButton, QVBoxLayout,
     QHBoxLayout, QScrollArea, QFrame, QMessageBox, QToolTip, QSizeGrip)
 
@@ -26,11 +26,13 @@ class ToolSpec:
     glyph: str
     color: str
     kind: str
+    external: bool = False
 
 
 TOOLS = (
     ToolSpec('downloader', 'Easy Downloader', 'download', '#007aff', 'download'),
     ToolSpec('converter', 'Easy Converter', 'convert', '#ff9500', 'convert'),
+    ToolSpec('genyconnect', 'GenyConnect', 'genyconnect', '#007aff', 'external', True),
 )
 
 PALETTES = {
@@ -62,6 +64,8 @@ class Carousel(QWidget):
         self.hovered = -1
         self.wheel_delta = 0
         self.cache = {}
+        self.installed_ids={x.id for x in self.tools if not x.external}
+        self.external_status=''
         self.setFocusPolicy(Qt.FocusPolicy.StrongFocus)
         self.setMouseTracking(True)
         self.setAccessibleName('App carousel')
@@ -86,6 +90,7 @@ class Carousel(QWidget):
     def set_tools(self, tools):
         self.animation.stop()
         self.tools = list(tools)
+        self.installed_ids.update(x.id for x in self.tools if not x.external)
         self.selected = min(self.selected, max(0, len(self.tools)-1))
         self.offset = float(self.start_index())
         self.update_accessibility(); self.update()
@@ -109,7 +114,7 @@ class Carousel(QWidget):
         spacing = min(214, (self.width()-170)/max(1,slots))
         x = self.width()/2 + (index-self.offset-(slots-1)/2)*spacing
         height=min(174,self.height()-62)
-        return QRectF(x-91, 17 if self.height()<250 else 30, 182, height)
+        return QRectF(x-91, max(17,(self.height()-height)/2-8), 182, height)
 
     def arrow_rect(self, right):
         return QRectF(self.width()-65 if right else 25, self.height()/2-21, 40, 42)
@@ -123,22 +128,26 @@ class Carousel(QWidget):
             if r.right() < 80 or r.left() > self.width()-80:
                 continue
             selected = i == self.selected
-            p.setPen(QPen(QColor(c['edge']),1) if selected else Qt.PenStyle.NoPen)
-            p.setBrush(QColor(c['selected']) if selected else Qt.BrushStyle.NoBrush)
-            p.drawRoundedRect(r,22,22)
-            if i == self.hovered and not selected:
-                p.setPen(QPen(QColor(c['edge']),1)); p.setBrush(Qt.BrushStyle.NoBrush); p.drawRoundedRect(r,22,22)
+            # Selection is communicated only through luminance and the blue dot.
+            installed=spec.id in self.installed_ids
+            p.setOpacity(1.0 if selected and installed else .56 if selected else .28)
             key = (spec.glyph, spec.color)
             if key not in self.cache:
                 self.cache[key] = app_icon(spec.glyph,spec.color,92,True)
             size=min(86,int(r.height()*.52))
             self.cache[key].paint(p, int(r.center().x()-size/2), int(r.top()+15),size,size)
-            p.setPen(QColor(c['ink']))
+            p.setOpacity(1)
+            p.setPen(QColor(c['ink'] if selected else c['muted']))
             f=QFont('Segoe UI',11); f.setWeight(QFont.Weight.Medium); p.setFont(f)
             p.drawText(QRectF(r.x(),r.top()+size+28,r.width(),26),Qt.AlignmentFlag.AlignCenter,spec.name)
+            p.setOpacity(1)
+            if spec.external and not installed:
+                p.setPen(QColor(c['muted']));p.setFont(QFont('Segoe UI',8))
+                state='در حال نصب' if self.external_status=='install' else 'در حال دریافت' if self.external_status=='download' else 'دریافت و نصب'
+                p.drawText(QRectF(r.x(),r.top()+size+50,r.width(),17),Qt.AlignmentFlag.AlignCenter,state)
             if selected:
                 p.setPen(Qt.PenStyle.NoPen);p.setBrush(QColor(c['accent']))
-                p.drawEllipse(QPointF(r.center().x(),r.bottom()-10),2,2)
+                p.drawEllipse(QPointF(r.center().x(),r.bottom()+8),2.5,2.5)
         p.setClipping(False)
         for right in (False,True):
             rect = self.arrow_rect(right)
@@ -148,11 +157,6 @@ class Carousel(QWidget):
             x,y=rect.center().x(),rect.center().y(); direction=1 if right else -1
             p.drawLine(QPointF(x-direction*3,y-6),QPointF(x+direction*3,y))
             p.drawLine(QPointF(x+direction*3,y),QPointF(x-direction*3,y+6))
-        count = len(self.tools)
-        gap = min(14,180/max(1,count))
-        for i in range(count):
-            p.setPen(Qt.PenStyle.NoPen);p.setBrush(QColor(c['muted'] if i==self.selected else c['edge']))
-            p.drawEllipse(QPointF(self.width()/2 + (i-(count-1)/2)*gap,self.height()-22),3,3)
 
     def keyPressEvent(self,e):
         if e.key() == Qt.Key.Key_Right:
@@ -182,6 +186,9 @@ class Carousel(QWidget):
 
     def mouseMoveEvent(self,e):
         self.hovered=next((i for i in range(len(self.tools)) if self.item_rect(i).contains(e.position())),-1)
+        if self.hovered>=0 and self.hovered!=self.selected:
+            self.select(self.hovered)
+        self.setToolTip('برای دریافت و نصب کلیک کنید' if self.hovered>=0 and self.tools[self.hovered].external and self.tools[self.hovered].id not in self.installed_ids else '')
         over_arrow=any(self.arrow_rect(r).contains(e.position()) for r in (True,False))
         self.setCursor(Qt.CursorShape.PointingHandCursor if self.hovered>=0 or over_arrow else Qt.CursorShape.ArrowCursor)
         self.update()
@@ -205,6 +212,26 @@ class Carousel(QWidget):
         self.hovered=-1;self.update()
 
 
+def continuous_rect(rect,radius,square_bottom_right=False):
+    """A superelliptic corner profile; flat edges join with continuous curvature."""
+    x,y,w,h=rect.x(),rect.y(),rect.width(),rect.height();r=min(radius,w/2,h/2)
+    path=QPainterPath();path.moveTo(x+r,y);path.lineTo(x+w-r,y)
+    corners=[(x+w-r,y+r,-90,0),(x+w-r,y+h-r,0,90),(x+r,y+h-r,90,180),(x+r,y+r,180,270)]
+    for i,(cx,cy,start,end) in enumerate(corners):
+        if i==1 and square_bottom_right:
+            path.lineTo(x+w,y+h);path.lineTo(x+r,y+h);continue
+        for step in range(1,25):
+            angle=math.radians(start+(end-start)*step/24)
+            cosine,sine=math.cos(angle),math.sin(angle)
+            px=cx+r*math.copysign(abs(cosine)**.62,cosine)
+            py=cy+r*math.copysign(abs(sine)**.62,sine)
+            path.lineTo(px,py)
+        if i==0:path.lineTo(x+w,y+h-r)
+        elif i==1:path.lineTo(x+r,y+h)
+        elif i==2:path.lineTo(x,y+r)
+    path.closeSubpath();return path
+
+
 class Surface(QWidget):
     def __init__(self,window):
         super().__init__(window)
@@ -219,14 +246,14 @@ class Surface(QWidget):
         tab_gradient.setColorAt(0,QColor(c['tab_top']));tab_gradient.setColorAt(1,QColor(c['tab']))
         p.setPen(QPen(QColor(c['edge']),.8));p.setBrush(tab_gradient)
         margin=w*.135
-        p.drawRoundedRect(QRectF(margin+.5,.5,w-2*margin-1,88),26,26)
-        p.drawRoundedRect(QRectF(margin+.5,h-88,w-2*margin-1,87.5),26,26)
+        p.drawPath(continuous_rect(QRectF(margin+.5,.5,w-2*margin-1,88),28))
+        p.drawPath(continuous_rect(QRectF(margin+.5,h-88,w-2*margin-1,87.5),28,True))
         body_gradient=QLinearGradient(0,44,0,h-44)
         body_gradient.setColorAt(0,QColor(c['panel_top']));body_gradient.setColorAt(1,QColor(c['panel']))
         p.setBrush(body_gradient)
-        p.drawRoundedRect(QRectF(.5,44,w-1,h-88),32,32)
+        p.drawPath(continuous_rect(QRectF(.5,44,w-1,h-88),44))
         p.setPen(QColor(c['ink']));f=QFont('Segoe UI',14 if w>=800 else 12);f.setWeight(QFont.Weight.DemiBold);p.setFont(f)
-        p.drawText(QRectF(margin+60,5,w-2*margin-144,34),Qt.AlignmentFlag.AlignCenter,'Handy Tools App')
+        p.drawText(QRectF(margin+60,5,w-2*margin-172,34),Qt.AlignmentFlag.AlignCenter,'Handy Tools App')
 
     def mousePressEvent(self,e):
         if e.button()==Qt.MouseButton.LeftButton and e.position().y()<44:
@@ -235,6 +262,9 @@ class Surface(QWidget):
     def mouseMoveEvent(self,e):
         if self.drag_start is not None and e.buttons() & Qt.MouseButton.LeftButton:
             self.owner.move(e.globalPosition().toPoint()-self.drag_start)
+
+    def mouseDoubleClickEvent(self,e):
+        if e.button()==Qt.MouseButton.LeftButton and e.position().y()<44:self.owner.toggle_maximized()
 
     def mouseReleaseEvent(self,e):
         self.drag_start=None
@@ -245,18 +275,50 @@ class Surface(QWidget):
         self.owner.carousel.setGeometry(0,44,w,h-88)
         self.owner.footer.setGeometry(margin+22,h-42,w-2*margin-62,36)
         self.owner.theme_button.setGeometry(margin+15,4,36,36)
-        self.owner.minimize_button.setGeometry(w-margin-83,4,32,36)
-        self.owner.close_button.setGeometry(w-margin-49,4,32,36)
-        self.owner.resize_grip.setGeometry(w-margin-24,h-24,16,16)
-        self.owner.settings.setValue('launcher_size',[w,h])
+        self.owner.minimize_button.setGeometry(w-margin-105,8,28,28)
+        self.owner.maximize_button.setGeometry(w-margin-76,8,28,28)
+        self.owner.close_button.setGeometry(w-margin-47,8,28,28)
+        self.owner.resize_grip.setGeometry(w-margin-18,h-18,17,17)
+        self.owner.resize_grip.setVisible(not self.owner.isMaximized())
+        if not self.owner.isMaximized():self.owner.settings.setValue('launcher_size',[w,h])
+
+
+class WindowControl(QPushButton):
+    def __init__(self,owner,glyph,tooltip,action):
+        super().__init__(owner.surface);self.setFixedSize(28,28);self.setProperty('glyph',glyph)
+        self.setToolTip(tooltip);self.setAccessibleName(tooltip);self.setCursor(Qt.CursorShape.PointingHandCursor);self.clicked.connect(action)
+    def paintEvent(self,event):
+        p=QPainter(self);p.setRenderHint(QPainter.RenderHint.Antialiasing)
+        glyph=self.property('glyph')
+        color={'close':'#ff6059','minimize':'#ffbd2e','maximize':'#28c840'}[glyph]
+        p.setPen(QPen(QColor(0,0,0,24),.7));p.setBrush(QColor(color));p.drawEllipse(QRectF(6,6,16,16))
+        p.setPen(QPen(QColor(0,0,0,190 if self.underMouse() or self.hasFocus() else 115),1.15,Qt.PenStyle.SolidLine,Qt.PenCapStyle.RoundCap))
+        if glyph=='close':p.drawLine(11,11,17,17);p.drawLine(17,11,11,17)
+        elif glyph=='minimize':p.drawLine(10,14,18,14)
+        elif self.window().isMaximized():
+            p.drawRoundedRect(QRectF(12,10,6,6),.8,.8);p.drawRoundedRect(QRectF(10,12,6,6),.8,.8)
+        else:
+            p.drawLine(11,16,11,11);p.drawLine(11,11,16,11);p.drawLine(17,12,17,17);p.drawLine(17,17,12,17)
+    def enterEvent(self,event):super().enterEvent(event);self.update()
+    def leaveEvent(self,event):super().leaveEvent(event);self.update()
 
 
 class ResizeGrip(QSizeGrip):
+    def __init__(self,parent=None):
+        super().__init__(parent);self._pulse=.15
+        self.pulse=QPropertyAnimation(self,b'opacityPulse',self);self.pulse.setDuration(5000)
+        self.pulse.setStartValue(0.0);self.pulse.setKeyValueAt(.5,.65);self.pulse.setEndValue(0.0)
+        self.pulse.setEasingCurve(QEasingCurve.Type.InOutSine);self.pulse.setLoopCount(-1);self.pulse.start()
+    def get_pulse(self):return self._pulse
+    def set_pulse(self,value):self._pulse=value;self.update()
+    opacityPulse=Property(float,get_pulse,set_pulse)
     def paintEvent(self,event):
         p=QPainter(self);p.setRenderHint(QPainter.RenderHint.Antialiasing)
-        p.setPen(QPen(QColor(PALETTES[self.window().theme]['muted']),1.4))
-        for offset in (0,4,8):
-            p.drawLine(4+offset,14,14,4+offset)
+        p.setOpacity(1 if self.underMouse() else self._pulse)
+        p.setPen(Qt.PenStyle.NoPen);p.setBrush(QColor(PALETTES[self.window().theme]['muted']))
+        p.drawPolygon(QPolygonF([QPointF(self.width()-1,1),QPointF(self.width()-1,self.height()-1),QPointF(1,self.height()-1)]))
+    def enterEvent(self,event):super().enterEvent(event);self.update()
+    def leaveEvent(self,event):super().leaveEvent(event);self.update()
 
 
 class ToolWindow(QMainWindow):
@@ -298,7 +360,7 @@ class Window(QMainWindow):
         self.theme=self.settings.value('theme','dark')
         if self.theme not in PALETTES:
             self.theme='dark'
-        self.closing=False;self.setup_task=None;self.windows={};self.factories={};self.settings_dialog=None
+        self.closing=False;self.setup_task=None;self.windows={};self.factories={};self.settings_dialog=None;self.external_dialog=None
         self.specs=list(TOOLS);self.history=[]
         self.setWindowTitle('Handy Tools App')
         self.setWindowIcon(app_icon('brand','#007aff'))
@@ -324,8 +386,9 @@ class Window(QMainWindow):
         self.settings_button=self.icon_button('settings','تنظیمات و آپدیت',self.open_settings)
         row.addWidget(self.donate_button);row.addWidget(self.settings_button)
         self.theme_button=self.icon_button('sun','تغییر حالت روشن / تاریک',self.toggle_theme)
-        self.minimize_button=self.icon_button('minimize','کوچک کردن',self.showMinimized)
-        self.close_button=self.icon_button('close','بستن',self.close)
+        self.minimize_button=WindowControl(self,'minimize','کوچک کردن',self.showMinimized)
+        self.maximize_button=WindowControl(self,'maximize','بزرگ‌نمایی / بازگرداندن',self.toggle_maximized)
+        self.close_button=WindowControl(self,'close','بستن',self.close)
         self.resize_grip=ResizeGrip(self.surface)
         self.resize_grip.setToolTip('برای تغییر اندازه، این گوشه را بکشید')
         self.resize_grip.setAccessibleName('تغییر اندازهٔ لانچر')
@@ -334,6 +397,7 @@ class Window(QMainWindow):
             shortcut=QShortcut(QKeySequence(key),self);shortcut.activated.connect(fn)
         self.apply_theme();center_window(self)
         self.restore_recent()
+        self.refresh_external_state()
         QTimer.singleShot(0,self.prepare_tools)
 
     def icon_button(self,glyph,tooltip,fn):
@@ -363,7 +427,36 @@ class Window(QMainWindow):
         if self.carousel.tools:
             self.open_tool(self.carousel.tools[self.carousel.selected].id)
 
+    def toggle_maximized(self):
+        self.showNormal() if self.isMaximized() else self.showMaximized()
+        self.maximize_button.update()
+
+    def external_busy(self):
+        return self.external_dialog is not None and self.external_dialog.task is not None
+
+    def refresh_external_state(self):
+        from external_apps import detect_installed
+        if detect_installed() is not None:self.carousel.installed_ids.add('genyconnect')
+        else:self.carousel.installed_ids.discard('genyconnect')
+        self.carousel.update()
+
+    def open_external(self):
+        if self.external_busy():
+            self.external_dialog.show();self.external_dialog.raise_();self.external_dialog.activateWindow();return
+        from external_apps import detect_installed,launch_installed
+        installed=detect_installed()
+        if installed is not None:
+            self.refresh_external_state()
+            try:launch_installed(installed)
+            except Exception as exc:QMessageBox.warning(self,'GenyConnect',str(exc))
+            return
+        from external_ui import ExternalDialog
+        if self.external_dialog is None:self.external_dialog=ExternalDialog(self)
+        self.external_dialog.apply_theme();self.external_dialog.show();self.external_dialog.raise_();self.external_dialog.activateWindow()
+        if self.external_dialog.task is None:self.external_dialog.start()
+
     def open_tool(self,tool_id):
+        if tool_id=='genyconnect':return self.open_external()
         spec=next(x for x in self.specs if x.id==tool_id)
         if tool_id not in self.windows:
             factory=self.factories.get(tool_id,ToolWindow)
@@ -389,6 +482,7 @@ class Window(QMainWindow):
             window.apply_theme()
         if self.settings_dialog is not None:
             self.settings_dialog.apply_theme()
+        if self.external_dialog is not None:self.external_dialog.apply_theme()
 
     def prepare_tools(self):
         if self.closing:
@@ -438,7 +532,7 @@ class Window(QMainWindow):
     def closeEvent(self,e):
         busy=[p for p in self.pages() if p.is_busy()]
         updating=self.settings_dialog is not None and self.settings_dialog.task is not None
-        if busy or self.setup_task or updating:
+        if busy or self.setup_task or updating or self.external_busy():
             if not self.closing:
                 if busy and QMessageBox.question(self,'عملیات در حال اجراست','همهٔ عملیات متوقف شوند و برنامه بسته شود؟')!=QMessageBox.StandardButton.Yes:
                     e.ignore();return
@@ -449,15 +543,17 @@ class Window(QMainWindow):
                     self.setup_task.cancel()
                 if updating:
                     self.settings_dialog.reject()
+                if self.external_busy():self.external_dialog.reject()
             e.ignore()
         else:
             for window in self.windows.values():
                 window.close()
             if self.settings_dialog is not None:
                 self.settings_dialog.reject()
+            if self.external_dialog is not None:self.external_dialog.reject()
             self.settings.sync();e.accept()
 
     def finish_close(self):
         updating=self.settings_dialog is not None and self.settings_dialog.task is not None
-        if self.closing and not self.setup_task and not updating and not any(p.is_busy() for p in self.pages()):
+        if self.closing and not self.setup_task and not updating and not self.external_busy() and not any(p.is_busy() for p in self.pages()):
             QTimer.singleShot(0,self.close)
