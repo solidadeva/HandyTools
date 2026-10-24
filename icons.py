@@ -17,18 +17,20 @@ ART = {
 }
 
 
-def svg(name, color='#dce8e6', tile=False):
+def svg(name, color='#8e8e93', tile=False):
     background = ''
     if tile:
-        # One quiet accent per app; no raster dependencies or external fonts.
-        background = f'<rect x="1" y="1" width="62" height="62" rx="16" fill="{color}"/>'
-        color = '#142524' if name == 'download' else '#f7f3ff'
+        top,bottom = ('#5ac8fa','#007aff') if name=='download' else ('#ffcc66','#ff9500') if name=='convert' else ('#9ea5b2','#535d70')
+        background = f'''<defs><linearGradient id="tile" x1="0" y1="0" x2="0.25" y2="1"><stop stop-color="{top}"/><stop offset="1" stop-color="{bottom}"/></linearGradient><linearGradient id="rim" x1="0" y1="0" x2="0" y2="1"><stop stop-color="white" stop-opacity=".55"/><stop offset="1" stop-color="white" stop-opacity=".04"/></linearGradient></defs>
+        <path d="M22 2H42C56 2 62 8 62 22V42C62 56 56 62 42 62H22C8 62 2 56 2 42V22C2 8 8 2 22 2Z" fill="url(#tile)"/>
+        <path d="M22 2H42C56 2 62 8 62 22V42C62 56 56 62 42 62H22C8 62 2 56 2 42V22C2 8 8 2 22 2Z" fill="none" stroke="url(#rim)" stroke-width=".75"/>'''
+        color = '#ffffff'
     return ('<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 64 64">'
-            + background + f'<g fill="none" stroke="{color}" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">'
+            + background + f'<g fill="none" stroke="{color}" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round">'
             + ART[name] + '</g></svg>')
 
 
-def app_icon(name, color='#dce8e6', size=64, tile=False):
+def app_icon(name, color='#8e8e93', size=64, tile=False):
     data = svg(name, color, tile).encode()
     pm = QPixmap(size*2,size*2); pm.fill(Qt.GlobalColor.transparent)
     p = QPainter(pm); QSvgRenderer(data).render(p); p.end()
@@ -39,9 +41,9 @@ def app_icon(name, color='#dce8e6', size=64, tile=False):
 def export_assets(destination):
     folder=Path(destination); folder.mkdir(parents=True,exist_ok=True)
     for filename,name,color,tile in [
-        ('easy-downloader','download','#91d5bd',True),
-        ('easy-converter','convert','#8879cc',True),
-        ('settings','settings','#dce8e6',False),
-        ('donate','donate','#dce8e6',False)]:
+        ('easy-downloader','download','#007aff',True),
+        ('easy-converter','convert','#ff9500',True),
+        ('settings','settings','#8e8e93',False),
+        ('donate','donate','#8e8e93',False)]:
         (folder/(filename+'.svg')).write_text(svg(name,color,tile),encoding='utf-8')
         app_icon(name,color,256,tile).pixmap(256,256).save(str(folder/(filename+'.png')))

@@ -1,9 +1,9 @@
-Handy Tools App v0.3.0
+Handy Tools App v0.3.1
 
-- Real Settings window with shared dark/light theme controls.
-- Check, download and install updates from Settings; only changed app files are downloaded.
-- Source files are verified with SHA-256, with backups and rollback on installation failure.
-- Smaller launcher with interactive resizing and saved window size.
-- Easy Downloader and Easy Converter continue to open in independent windows.
+- Apple-inspired visual refresh across the launcher, both tools and Settings.
+- Neutral silver/white and graphite themes with a consistent blue accent.
+- Original gradient app icons with smooth continuous corners and lighter glyphs.
+- Softer surfaces, fine borders, calmer typography and consistent controls.
+- Existing carousel, compact/resizable launcher, independent windows and update flow are preserved.
 
-This release is the Python source edition. Extract the ZIP, run Install.bat once, then Start.vbs. Python 64-bit is required. Future source updates use Settings → Check for updates. FFmpeg and existing user settings are retained. A compiled Windows EXE is not included.
+Existing v0.3.0 users: open Settings → Check for updates. Only changed app files are downloaded; dependencies and FFmpeg are unchanged. This is the Python source edition.

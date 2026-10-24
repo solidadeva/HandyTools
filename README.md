@@ -16,6 +16,8 @@ Versions 0.1/0.2 need one initial upgrade to 0.3.0 to obtain the updater. Frozen
 
 ## Launcher
 
+The v0.3.1 interface uses an Apple-inspired visual language: silver/graphite surfaces, fine separators, blue controls and original continuous-corner gradient icons. Existing structure and behavior are preserved.
+
 - Smaller initial size; drag the lower-right grip to resize. Last size is remembered.
 - Mouse wheel, swipe/drag, arrows and Left/Right keys navigate; click or Enter opens a tool.
 - Settings controls themes and updates. Donate remains a visual placeholder.

@@ -7,7 +7,7 @@ from pathlib import Path
 from PySide6.QtCore import (Qt, QRectF, QPoint, QPointF, QSize, QSettings, QTimer, Signal,
                            Property, QPropertyAnimation, QEasingCurve)
 from PySide6.QtGui import (QColor, QPainter, QPen, QFont, QCursor, QShortcut,
-                          QKeySequence, QGuiApplication)
+                          QKeySequence, QGuiApplication, QLinearGradient)
 from PySide6.QtWidgets import (QMainWindow, QWidget, QPushButton, QVBoxLayout,
     QHBoxLayout, QScrollArea, QFrame, QMessageBox, QToolTip, QSizeGrip)
 
@@ -29,14 +29,15 @@ class ToolSpec:
 
 
 TOOLS = (
-    ToolSpec('downloader', 'Easy Downloader', 'download', '#91d5bd', 'download'),
-    ToolSpec('converter', 'Easy Converter', 'convert', '#8879cc', 'convert'),
+    ToolSpec('downloader', 'Easy Downloader', 'download', '#007aff', 'download'),
+    ToolSpec('converter', 'Easy Converter', 'convert', '#ff9500', 'convert'),
 )
 
 PALETTES = {
- 'dark': dict(panel='#162226', tab='#475053', ink='#edf5f3', muted='#93a6a7', edge='#304245', selected='#223337'),
- 'light': dict(panel='#eef3f2', tab='#d3dfdc', ink='#1c3232', muted='#5f7776', edge='#c9d8d3', selected='#e0eae6')
+ 'dark': dict(panel='#1c1c1e', panel_top='#29292c', tab='#323235', tab_top='#3a3a3d', ink='#f5f5f7', muted='#98989d', edge='#414145', selected='#303034', accent='#0a84ff'),
+ 'light': dict(panel='#f5f5f7', panel_top='#ffffff', tab='#e5e5ea', tab_top='#f0f0f3', ink='#1d1d1f', muted='#6e6e73', edge='#d9d9df', selected='#ebebf0', accent='#007aff')
 }
+
 
 
 def center_window(widget):
@@ -123,25 +124,25 @@ class Carousel(QWidget):
                 continue
             selected = i == self.selected
             p.setPen(QPen(QColor(c['edge']),1) if selected else Qt.PenStyle.NoPen)
-            p.setBrush(QColor(c['selected']) if selected else QColor(c['panel']))
-            p.drawRoundedRect(r,20,20)
+            p.setBrush(QColor(c['selected']) if selected else Qt.BrushStyle.NoBrush)
+            p.drawRoundedRect(r,22,22)
             if i == self.hovered and not selected:
-                p.setPen(QPen(QColor(c['edge']),1)); p.setBrush(Qt.BrushStyle.NoBrush); p.drawRoundedRect(r,20,20)
+                p.setPen(QPen(QColor(c['edge']),1)); p.setBrush(Qt.BrushStyle.NoBrush); p.drawRoundedRect(r,22,22)
             key = (spec.glyph, spec.color)
             if key not in self.cache:
                 self.cache[key] = app_icon(spec.glyph,spec.color,92,True)
             size=min(86,int(r.height()*.52))
             self.cache[key].paint(p, int(r.center().x()-size/2), int(r.top()+15),size,size)
             p.setPen(QColor(c['ink']))
-            f=QFont('Segoe UI',11); f.setWeight(QFont.Weight.DemiBold); p.setFont(f)
+            f=QFont('Segoe UI',11); f.setWeight(QFont.Weight.Medium); p.setFont(f)
             p.drawText(QRectF(r.x(),r.top()+size+28,r.width(),26),Qt.AlignmentFlag.AlignCenter,spec.name)
             if selected:
-                p.setPen(Qt.PenStyle.NoPen);p.setBrush(QColor(spec.color))
+                p.setPen(Qt.PenStyle.NoPen);p.setBrush(QColor(c['accent']))
                 p.drawEllipse(QPointF(r.center().x(),r.bottom()-10),2,2)
         p.setClipping(False)
         for right in (False,True):
             rect = self.arrow_rect(right)
-            p.setPen(QPen(QColor(c['edge']),1)); p.setBrush(Qt.BrushStyle.NoBrush)
+            p.setPen(Qt.PenStyle.NoPen); p.setBrush(QColor(c['selected']))
             p.drawRoundedRect(rect,20,20)
             p.setPen(QPen(QColor(c['muted']),1.8,Qt.PenStyle.SolidLine,Qt.PenCapStyle.RoundCap,Qt.PenJoinStyle.RoundJoin))
             x,y=rect.center().x(),rect.center().y(); direction=1 if right else -1
@@ -214,14 +215,18 @@ class Surface(QWidget):
         p=QPainter(self);p.setRenderHint(QPainter.RenderHint.Antialiasing)
         c=PALETTES[self.owner.theme]
         w,h=self.width(),self.height()
-        p.setPen(Qt.PenStyle.NoPen);p.setBrush(QColor(c['tab']))
+        tab_gradient=QLinearGradient(0,0,0,h)
+        tab_gradient.setColorAt(0,QColor(c['tab_top']));tab_gradient.setColorAt(1,QColor(c['tab']))
+        p.setPen(QPen(QColor(c['edge']),.8));p.setBrush(tab_gradient)
         margin=w*.135
-        p.drawRoundedRect(QRectF(margin,0,w-2*margin,88),32,32)
-        p.drawRoundedRect(QRectF(margin,h-88,w-2*margin,88),32,32)
-        p.setBrush(QColor(c['panel']))
-        p.drawRoundedRect(QRectF(0,44,w,h-88),36,36)
-        p.setPen(QColor(c['ink']));f=QFont('Segoe UI',16 if w>=800 else 12);f.setWeight(QFont.Weight.Black);p.setFont(f)
-        p.drawText(QRectF(margin+60,5,w-2*margin-144,34),Qt.AlignmentFlag.AlignCenter,'HANDY TOOLS APP')
+        p.drawRoundedRect(QRectF(margin+.5,.5,w-2*margin-1,88),26,26)
+        p.drawRoundedRect(QRectF(margin+.5,h-88,w-2*margin-1,87.5),26,26)
+        body_gradient=QLinearGradient(0,44,0,h-44)
+        body_gradient.setColorAt(0,QColor(c['panel_top']));body_gradient.setColorAt(1,QColor(c['panel']))
+        p.setBrush(body_gradient)
+        p.drawRoundedRect(QRectF(.5,44,w-1,h-88),32,32)
+        p.setPen(QColor(c['ink']));f=QFont('Segoe UI',14 if w>=800 else 12);f.setWeight(QFont.Weight.DemiBold);p.setFont(f)
+        p.drawText(QRectF(margin+60,5,w-2*margin-144,34),Qt.AlignmentFlag.AlignCenter,'Handy Tools App')
 
     def mousePressEvent(self,e):
         if e.button()==Qt.MouseButton.LeftButton and e.position().y()<44:
@@ -296,7 +301,7 @@ class Window(QMainWindow):
         self.closing=False;self.setup_task=None;self.windows={};self.factories={};self.settings_dialog=None
         self.specs=list(TOOLS);self.history=[]
         self.setWindowTitle('Handy Tools App')
-        self.setWindowIcon(app_icon('brand','#91d5bd'))
+        self.setWindowIcon(app_icon('brand','#007aff'))
         self.setWindowFlags(Qt.WindowType.Window|Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         screen=QGuiApplication.screenAt(QCursor.pos()) or QGuiApplication.primaryScreen()
@@ -374,12 +379,12 @@ class Window(QMainWindow):
     def apply_theme(self):
         c=PALETTES[self.theme];self.carousel.theme=self.theme;self.carousel.update();self.surface.update()
         self.surface.setStyleSheet('QWidget { background: transparent; color: '+c['ink']+'; font-family: "Segoe UI"; } QPushButton { background: transparent; border: none; border-radius: 9px; } QPushButton:hover { background: '+c['edge']+'; } QPushButton:focus { border: 1px solid '+c['muted']+'; } QToolTip { background: '+c['tab']+'; color: '+c['ink']+'; padding: 8px; }')
-        self.version.setStyleSheet('font-size: 11px; color: '+c['ink']+';')
+        self.version.setStyleSheet('font-size: 11px; color: '+c['muted']+';')
         for b in [self.donate_button,self.settings_button,self.theme_button,self.minimize_button,self.close_button]:
             glyph=b.property('glyph')
             if b is self.theme_button:
                 glyph='sun' if self.theme=='dark' else 'moon'
-            b.setIcon(app_icon(glyph,c['ink'],24));b.setIconSize(QSize(24,24))
+            b.setIcon(app_icon(glyph,c['muted'],22));b.setIconSize(QSize(22,22))
         for window in self.windows.values():
             window.apply_theme()
         if self.settings_dialog is not None:

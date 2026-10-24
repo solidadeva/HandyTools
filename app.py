@@ -11,10 +11,10 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QFrame, QLabe
 from engine import FORMATS, IMAGES, tool
 from workers import Task, validate_url
 
-DARK = dict(bg='#101117', side='#15161e', card='#1c1e29', hover='#252838', text='#f1f2fa',
-            muted='#999eb5', border='#2e3143', accent='#b5a2ff', ink='#19142d', input='#171923', hero='#27203d')
-LIGHT = dict(bg='#f5f5fa', side='#ffffff', card='#ffffff', hover='#f0edf9', text='#24243a',
-             muted='#6f7189', border='#e3e2ed', accent='#7354d2', ink='#ffffff', input='#f7f7fc', hero='#eee8fc')
+DARK = dict(bg='#1c1c1e', side='#242426', card='#2c2c2e', hover='#3a3a3c', text='#f5f5f7',
+            muted='#a1a1a6', border='#444446', accent='#0a84ff', ink='#ffffff', input='#242426', hero='#303034')
+LIGHT = dict(bg='#f5f5f7', side='#f2f2f4', card='#ffffff', hover='#e8e8ed', text='#1d1d1f',
+             muted='#6e6e73', border='#d9d9df', accent='#007aff', ink='#ffffff', input='#ffffff', hero='#eaf3ff')
 
 
 def icon(kind, color='#b5a2ff', size=48):
@@ -293,50 +293,40 @@ class ToolPage(QWidget):
 def tool_styles(theme):
     c = DARK if theme == 'dark' else LIGHT
     return ('''
-            QWidget { background: %(bg)s; color: %(text)s; font-family: 'Segoe UI', 'Noto Sans Arabic'; font-size: 13px; }
-            QScrollArea, QScrollArea > QWidget > QWidget { background: %(bg)s; border: none; }
-            QLabel { background: transparent; }
-            QLabel#muted { color: %(muted)s; font-size: 12px; }
-            QLabel#eyebrow { color: %(muted)s; font-size: 10px; font-weight: 600; letter-spacing: 1px; }
-            QLabel#brand { font-size: 24px; font-weight: 800; letter-spacing: 4px; }
-            QLabel#heroTitle { font-size: 36px; font-weight: 700; }
-            QLabel#tagline { font-size: 22px; font-weight: 600; }
-            QLabel#pageTitle { font-size: 28px; font-weight: 700; }
-            QLabel#cardTitle { font-size: 20px; font-weight: 650; }
-            QLabel#section { font-weight: 600; font-size: 13px; }
-            QLabel#accent { color: %(accent)s; font-weight: 600; }
-            QFrame#sidebar { background: %(side)s; border-right: 1px solid %(border)s; }
-            QFrame#hero { background: %(hero)s; border: 1px solid %(border)s; border-radius: 18px; }
-            QFrame#panel { background: %(card)s; border: 1px solid %(border)s; border-radius: 14px; }
-            QFrame#panel QWidget { background: transparent; }
-            QPushButton { background: %(card)s; border: 1px solid %(border)s; border-radius: 8px; padding: 10px 14px; font-weight: 500; }
-            QPushButton:hover { background: %(hover)s; border-color: %(accent)s; }
-            QPushButton:focus { border: 2px solid %(accent)s; }
-            QPushButton:disabled { color: %(muted)s; border-color: %(border)s; }
-            QPushButton#nav { text-align: left; background: transparent; border: none; padding: 10px; }
-            QPushButton#nav:checked { color: %(accent)s; background: %(hero)s; }
-            QPushButton#nav:focus { border: 1px solid %(accent)s; }
-            QPushButton#primary { background: %(accent)s; color: %(ink)s; border: none; font-weight: 700; }
-            QPushButton#primary:hover { background: %(accent)s; border: 2px solid %(text)s; }
-            QPushButton#primary:disabled { background: %(hover)s; color: %(muted)s; }
-            QPushButton#link { background: transparent; color: %(accent)s; border: none; padding: 5px; }
-            QPushButton#toolCard { border-radius: 14px; padding: 0px; text-align: left; }
-            QPushButton#toolCard QWidget { background: transparent; }
-            QPushButton#recent { text-align: left; background: transparent; border: none; padding: 7px; font-size: 12px; }
-            QPushButton#drop { background: %(input)s; color: %(muted)s; border: 1px dashed %(accent)s; border-radius: 10px; padding: 20px; }
-            QFrame#panel QLineEdit, QFrame#panel QComboBox, QLineEdit, QComboBox { background: %(input)s; border: 1px solid %(border)s; border-radius: 8px; padding: 10px; min-height: 20px; selection-background-color: %(accent)s; selection-color: %(ink)s; }
-            QLineEdit:focus, QComboBox:focus { border: 1px solid %(accent)s; }
-            QLineEdit:disabled, QComboBox:disabled { color: %(muted)s; }
-            QComboBox::drop-down { border: none; width: 28px; }
-            QComboBox QAbstractItemView { background: %(card)s; selection-background-color: %(hero)s; selection-color: %(text)s; padding: 8px; }
-            QProgressBar { background: %(border)s; border: none; border-radius: 3px; }
-            QProgressBar::chunk { background: %(accent)s; border-radius: 3px; }
-            QPlainTextEdit { background: %(input)s; border: 1px solid %(border)s; border-radius: 8px; padding: 10px; font-family: Consolas, monospace; font-size: 11px; }
-            QScrollBar:vertical { background: %(bg)s; width: 8px; }
-            QScrollBar::handle:vertical { background: %(border)s; border-radius: 4px; min-height: 30px; }
-            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
-            QToolTip { background: %(card)s; color: %(text)s; border: 1px solid %(border)s; }
-        ''' % c)
+        QWidget { background: %(bg)s; color: %(text)s; font-family: 'Segoe UI Variable', 'Segoe UI', 'Noto Sans Arabic'; font-size: 13px; }
+        QScrollArea { border: none; }
+        QLabel { background: transparent; }
+        QLabel#muted { color: %(muted)s; font-size: 12px; }
+        QLabel#pageTitle { font-size: 25px; font-weight: 600; letter-spacing: -0.5px; }
+        QLabel#section { font-size: 12px; font-weight: 600; color: %(muted)s; }
+        QFrame#panel { background: %(card)s; border: 1px solid %(border)s; border-radius: 18px; }
+        QFrame#panel QWidget { background: transparent; }
+        QFrame#separator { background: %(border)s; border: none; max-height: 1px; }
+        QPushButton { background: %(card)s; border: 1px solid %(border)s; border-radius: 10px; padding: 9px 16px; font-weight: 500; }
+        QPushButton:hover { background: %(hover)s; }
+        QPushButton:pressed { background: %(border)s; }
+        QPushButton:focus { border: 1px solid %(accent)s; }
+        QPushButton:disabled { color: %(muted)s; border-color: %(border)s; }
+        QPushButton#primary { background: %(accent)s; color: white; border: 1px solid %(accent)s; font-weight: 600; }
+        QPushButton#primary:hover { background: #2997ff; border-color: #2997ff; }
+        QPushButton#primary:pressed { background: #0062cc; }
+        QPushButton#primary:disabled { background: %(hover)s; border-color: %(border)s; color: %(muted)s; }
+        QPushButton#link { background: transparent; color: %(accent)s; border: none; padding: 6px; }
+        QFrame#panel QPushButton#drop { background: %(input)s; color: %(muted)s; border: 1px dashed %(border)s; border-radius: 14px; padding: 20px; }
+        QFrame#panel QPushButton#drop:hover { border-color: %(accent)s; color: %(accent)s; }
+        QFrame#panel QLineEdit, QFrame#panel QComboBox, QLineEdit, QComboBox { background: %(input)s; border: 1px solid %(border)s; border-radius: 10px; padding: 10px 12px; min-height: 20px; selection-background-color: %(accent)s; selection-color: white; }
+        QLineEdit:focus, QComboBox:focus { border-color: %(accent)s; }
+        QLineEdit:disabled, QComboBox:disabled { color: %(muted)s; }
+        QComboBox::drop-down { border: none; width: 28px; }
+        QComboBox QAbstractItemView { background: %(card)s; border: 1px solid %(border)s; border-radius: 10px; selection-background-color: %(accent)s; selection-color: white; padding: 8px; }
+        QProgressBar { background: %(border)s; border: none; border-radius: 3px; }
+        QProgressBar::chunk { background: %(accent)s; border-radius: 3px; }
+        QPlainTextEdit { background: %(input)s; border: 1px solid %(border)s; border-radius: 12px; padding: 12px; font-family: Consolas, monospace; font-size: 11px; }
+        QScrollBar:vertical { background: transparent; width: 8px; }
+        QScrollBar::handle:vertical { background: %(border)s; border-radius: 4px; min-height: 30px; }
+        QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
+        QToolTip { background: %(card)s; color: %(text)s; border: 1px solid %(border)s; padding: 8px; }
+    ''' % c)
 
 
 def main():

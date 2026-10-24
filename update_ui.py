@@ -49,7 +49,7 @@ class SettingsDialog(QDialog):
         self.theme=QComboBox();self.theme.addItem('حالت تاریک','dark');self.theme.addItem('حالت روشن','light')
         self.theme.setCurrentIndex(0 if manager.theme=='dark' else 1)
         self.theme.currentIndexChanged.connect(self.change_theme);box.addWidget(self.theme)
-        line=QFrame();line.setFrameShape(QFrame.Shape.HLine);box.addWidget(line)
+        line=QFrame();line.setObjectName('separator');line.setFixedHeight(1);box.addWidget(line)
         box.addWidget(QLabel('به‌روزرسانی برنامه'))
         self.version_label=QLabel('نسخهٔ نصب‌شده: '+VERSION);box.addWidget(self.version_label)
         self.status=QLabel('فقط فایل‌های تغییرکرده دریافت می‌شوند؛ FFmpeg و فایل‌های شما حفظ می‌شوند.')
