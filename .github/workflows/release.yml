@@ -1,0 +1,52 @@
+name: Test and publish update
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: handy-release
+  cancel-in-progress: false
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install FFmpeg and runtime
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg libegl1 libopengl0
+          python -m pip install -r requirements.txt
+      - name: Test conversion, UI and updater
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python -m unittest discover -s tests -p 'test_*.py'
+  release:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Package source and update manifest
+        run: python tools/package_release.py --commit "$GITHUB_SHA" --output release
+      - name: Publish a new version
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          version=$(python -c 'from version import VERSION; print(VERSION)')
+          if gh release view "v$version" >/dev/null 2>&1; then
+            echo "Version v$version already exists; increase version.py to publish another update."
+            exit 0
+          fi
+          gh release create "v$version" release/* --target "$GITHUB_SHA" --title "Handy Tools App v$version" --notes-file RELEASE-NOTES.md

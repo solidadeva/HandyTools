@@ -1,0 +1,7 @@
+Handy Tools App 0.3.0
+Linux / Python 3.12 / Qt offscreen:
+22 unittest checks passed plus all 10 FFmpeg output-format integration checks.
+HEIC tiled primary-image decoding, source preservation, no overwrite and cancellation passed.
+Compact resizable launcher, saved size, independent windows, theme sharing and real Settings/update-check wiring passed.
+Updater: per-file download, immutable commit URLs, SHA-256, bounded network reads, path/symlink rejection, cancellation, owned-file deletion, app-file rollback and cache/user-file preservation passed.
+Windows-native launch, real YouTube download, restart/install on Windows and compiled EXE remain Windows validation items.

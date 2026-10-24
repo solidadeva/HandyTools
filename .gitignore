@@ -1,0 +1,11 @@
+.venv/
+__pycache__/
+*.py[cod]
+*.spec
+build/
+dist/
+release/
+.handy-*
+*.handy-new
+bin/*.exe
+*.log
