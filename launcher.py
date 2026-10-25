@@ -355,7 +355,7 @@ class ToolWindow(QMainWindow):
 
 
 class Window(QMainWindow):
-    def __init__(self,settings=None):
+    def __init__(self,settings=None,prepare=True):
         super().__init__()
         self.settings=settings if settings is not None else QSettings('HandyTools','HandyToolsApp')
         self.theme=self.settings.value('theme','dark')
@@ -399,7 +399,8 @@ class Window(QMainWindow):
         self.apply_theme();center_window(self)
         self.restore_recent()
         self.refresh_external_state()
-        QTimer.singleShot(0,self.prepare_tools)
+        if prepare:
+            QTimer.singleShot(0,self.prepare_tools)
 
     def icon_button(self,glyph,tooltip,fn):
         b=QPushButton(self.surface);b.setFixedSize(36,36);b.setProperty('glyph',glyph)

@@ -6,7 +6,7 @@ A compact Windows launcher for **Easy Downloader** and **Easy Converter**, with 
 
 ## Install
 
-Download the latest **HandyToolsApp-Windows** ZIP from [Releases](https://github.com/solidadeva/HandyTools/releases/latest), extract it, run `Install.bat` once, then `Start.vbs`. Requires 64-bit Python 3.11 or later. This is the Python source edition; a prebuilt EXE is not included.
+Download the latest **HandyToolsApp-Windows** ZIP from [Releases](https://github.com/solidadeva/HandyTools/releases/latest), extract it, run `Install.bat` once, then `Start.vbs`. Requires 64-bit Python 3.11 or later. Alternatively, download the Windows-x64 `.exe` release asset for a standalone app requiring no Python installation. It can be moved by itself, including to the Desktop.
 
 ## Updates
 
@@ -36,6 +36,12 @@ Install `requirements.txt`, ensure FFmpeg is on PATH, then run:
 QT_QPA_PLATFORM=offscreen python -m unittest discover -s tests -p 'test_*.py'
 ```
 
-Increase `version.py`, update `RELEASE-NOTES.md` and push to `main`. The release workflow tests the app, then publishes the source ZIP and per-file update manifest. Existing releases are not overwritten. `Build-Windows.bat` builds an onedir EXE on Windows; that path still needs Windows validation.
+Increase `version.py`, update `RELEASE-NOTES.md` and push to `main`. The release workflow tests the app on Linux, builds and validates a standalone EXE on Windows x64, then publishes the EXE, SHA-256 checksum, source ZIP and per-file update manifest. Existing releases are not overwritten.
 
 See [راهنمای فارسی](README-fa.md) and [third-party notices](THIRD-PARTY.md).
+
+## Windows EXE build
+
+Run `Build-Windows.bat` after `Install.bat`. The standalone output is `dist/portable/HandyToolsApp.exe`. The build validates it from an isolated directory containing only that EXE, before creating the release artifact and SHA-256 checksum. GitHub Actions builds and smoke-tests the Windows x64 executable before publishing.
+
+Old onedir builds at `dist/HandyToolsApp/HandyToolsApp.exe` must retain their complete `_internal` directory. A `Failed to load Python DLL ... _internal/python312.dll` error after moving only that old EXE is resolved by restoring the complete folder, creating a shortcut, or rebuilding with the new script. Updating source files does not change an already-built EXE; rebuild or download the new standalone release. Frozen EXE per-file updates remain unsupported.

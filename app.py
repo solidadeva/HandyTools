@@ -357,11 +357,41 @@ def tool_styles(theme):
     ''' % c)
 
 
-def main():
+def main(smoke_report=None):
     from launcher import Window
     app = QApplication(sys.argv)
     app.setStyle(IconStyle('Fusion'))
     app.setFont(QFont('Segoe UI', 10))
+    if smoke_report:
+        import json
+        import tempfile
+        from icons import ART, app_icon
+        import pillow_heif
+        from workers import resource_path
+        with tempfile.TemporaryDirectory(prefix='handy-smoke-') as temp:
+            window = Window(QSettings(str(Path(temp)/'settings.ini'), QSettings.Format.IniFormat), prepare=False)
+            window.show()
+            for name in ART:
+                if app_icon(name).pixmap(32,32).isNull():
+                    raise RuntimeError('Cannot render bundled icon: ' + name)
+            if app_icon('genyconnect').pixmap(64,64).isNull():
+                raise RuntimeError('Bundled GenyConnect icon is missing.')
+            for name in ('downloader/Engine.ps1', 'downloader/Compatibility.ps1'):
+                if not resource_path(name).is_file():
+                    raise RuntimeError('Bundled resource is missing: ' + name)
+            for name in ('converter', 'downloader'):
+                tool_window = window.open_tool(name)
+                if tool_window.grab().isNull():
+                    raise RuntimeError('Cannot render bundled tool: ' + name)
+            window.open_settings()
+            window.toggle_theme()
+            app.processEvents()
+            QTimer.singleShot(250, window.close)
+            result = app.exec()
+            if result == 0:
+                Path(smoke_report).write_text(json.dumps(dict(version=__import__('version').VERSION,
+                    frozen=bool(getattr(sys,'frozen',False)), ok=True)), encoding='utf-8')
+            return result
     window = Window(); window.show()
     return app.exec()
 

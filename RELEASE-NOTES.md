@@ -1,10 +1,8 @@
-Handy Tools App v0.4.1
+Handy Tools App v0.4.2
 
-- Redesigned the output area in Easy Downloader and Easy Converter as a compact result card, with filename and real icon buttons for Output Folder, Open File and download Details.
-- Output Folder is available as soon as an existing destination is selected, including while downloading. Open File becomes available only after the completed file exists.
-- Use native Windows shell associations to open files and folders, preserve Unicode and spaces, and show a useful error when a path or file association fails.
-- Clarify the finalization phase after download progress reaches 100%.
-- Render original icons directly from vectors at the requested display resolution, including Windows 125%, 150%, 200% and 300% scaling. Add consistent theme-aware action icons across tools, Settings and GenyConnect installation.
-- Refine line weights, Settings glyph and dropdown/clear controls; export 1024px app artwork and a multi-resolution Windows ICO. The official GenyConnect logo is retained.
+- Fix the Windows distribution trap behind the missing `_internal/python312.dll` error when the old EXE was moved by itself.
+- Build-Windows.bat now produces a self-contained, single-file `dist/portable/HandyToolsApp.exe`; Python and a neighboring `_internal` folder are not required.
+- Automatically copy only the built EXE to a separate folder with spaces and verify that the launcher, both tools, Settings, native HEIF imports, vector icons and bundled resources start successfully.
+- Build and validate the Windows x64 EXE in GitHub Actions, then publish it with a SHA-256 checksum alongside the source ZIP and incremental-update manifest.
 
-Existing users: Settings → Check for updates → Download → Install and restart. Only changed files are downloaded.
+Existing source users: update through Settings, then run Build-Windows.bat again to replace the old build. Existing EXE users: download the new EXE release asset. An old onedir EXE still requires its complete original folder; a desktop shortcut is safe. Frozen EXE per-file updating remains unsupported.
