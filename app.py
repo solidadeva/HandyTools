@@ -256,7 +256,7 @@ class ToolPage(QWidget):
     def success(self, value):
         self.output = Path(value) if value else None
         self.progress(100, 'فایل آماده شد' if value else 'موتور دانلود به‌روز شد')
-        self.refresh_output_actions()
+    self.refresh_output_actions()
         self.output_name.setText(self.output.name if self.output else 'موتور دانلود آمادهٔ استفاده است.')
         self.output_name.setToolTip(str(self.output or ''))
         if value:
@@ -376,7 +376,7 @@ def main(smoke_report=None):
                     raise RuntimeError('Cannot render bundled icon: ' + name)
             if app_icon('genyconnect').pixmap(64,64).isNull():
                 raise RuntimeError('Bundled GenyConnect icon is missing.')
-            for name in ('downloader/Engine.ps1', 'downloader/Compatibility.ps1'):
+            for name in ('downloader/Engine.ps1', 'downloader/Compatibility.ps1', 'downloader/ExeUpdate.ps1'):
                 if not resource_path(name).is_file():
                     raise RuntimeError('Bundled resource is missing: ' + name)
             for name in ('converter', 'downloader'):
@@ -384,9 +384,11 @@ def main(smoke_report=None):
                 if tool_window.grab().isNull():
                     raise RuntimeError('Cannot render bundled tool: ' + name)
             window.open_settings()
+            if not window.settings_dialog.action.isEnabled():
+                raise RuntimeError('Update checking is disabled in this build.')
             window.toggle_theme()
             app.processEvents()
-            QTimer.singleShot(250, window.close)
+            QTimer.singleShot(max(250,min(10000,int(os.environ.get('HANDY_SMOKE_DELAY_MS','250')))), window.close)
             result = app.exec()
             if result == 0:
                 Path(smoke_report).write_text(json.dumps(dict(version=__import__('version').VERSION,

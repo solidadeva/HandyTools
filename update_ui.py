@@ -13,6 +13,7 @@ from icons import set_button_icon, refresh_button_icons
 from icons import IconComboBox as QComboBox
 from updater import (latest_release,version_tuple,plan_update,stage_update,start_installer,UpdateCancelled)
 from version import VERSION
+from exe_updater import latest_exe_release, stage_exe_update, start_exe_installer
 
 
 class UpdateTask(QThread):
@@ -20,12 +21,19 @@ class UpdateTask(QThread):
     failure=Signal(str)
     progress=Signal(object,str)
 
-    def __init__(self,root,manifest=None,parent=None):
-        super().__init__(parent);self.root=root;self.manifest=manifest;self.cancel_event=threading.Event()
+    def __init__(self,root,manifest=None,parent=None,executable=False):
+        super().__init__(parent);self.root=root;self.manifest=manifest;self.executable=executable;self.cancel_event=threading.Event()
 
     def run(self):
         try:
-            if self.manifest is None:
+            if self.executable:
+                if self.manifest is None:
+                    manifest=latest_exe_release(self.cancel_event)
+                    self.result.emit((manifest,dict(changed=[manifest['name']], bytes=manifest['size'])))
+                else:
+                    self.result.emit(stage_exe_update(self.manifest,self.cancel_event,
+                        lambda percent,text:self.progress.emit(percent,text)))
+            elif self.manifest is None:
                 manifest=latest_release(self.cancel_event)
                 plan=plan_update(self.root,manifest)
                 self.result.emit((manifest,plan))
@@ -42,6 +50,7 @@ class SettingsDialog(QDialog):
     def __init__(self,manager):
         super().__init__(manager)
         self.manager=manager;self.root=Path(__file__).resolve().parent
+        self.executable=bool(getattr(sys,'frozen',False))
         self.task=None;self.manifest=None;self.stage=None;self.pending_close=False
         self.setWindowTitle('تنظیمات • Handy Tools App');self.resize(530,420);self.setMinimumWidth(430)
         self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
@@ -64,9 +73,8 @@ class SettingsDialog(QDialog):
         row.addWidget(self.action,1);row.addWidget(self.cancel);box.addLayout(row)
         set_button_icon(self.action, "refresh"); set_button_icon(self.cancel, "close")
         self.apply_theme()
-        if getattr(sys,'frozen',False):
-            self.action.setEnabled(False)
-            self.status.setText('آپدیت فایل‌به‌فایل فعلاً برای نسخهٔ Python فعال است. نسخهٔ EXE به بستهٔ انتشار جداگانه نیاز دارد.')
+        if self.executable:
+            self.status.setText('نسخهٔ جدید EXE دریافت و بررسی می‌شود؛ پس از نصب، برنامه دوباره باز می‌شود. FFmpeg، تنظیمات و فایل‌های شما حفظ می‌شوند.')
 
     def apply_theme(self):
         self.setStyleSheet(tool_styles(self.manager.theme))
@@ -87,14 +95,17 @@ class SettingsDialog(QDialog):
             if self.manager.setup_task or self.manager.external_busy() or any(p.is_busy() for p in self.manager.pages()):
                 self.status.setText('ابتدا عملیات فعال را تمام یا لغو کنید؛ سپس نصب آپدیت را بزنید.');return
             try:
-                start_installer(self.root,self.stage,os.getpid())
+                if self.executable:
+                    start_exe_installer(Path(sys.executable),self.stage,os.getpid())
+                else:
+                    start_installer(self.root,self.stage,os.getpid())
             except Exception as exc:
                 self.status.setText(str(exc));return
             self.stage=None  # ownership transferred to the separate installer
             self.accept();self.manager.close();return
         self.action.setEnabled(False);self.cancel.setEnabled(True);self.bar.setRange(0,0)
-        self.status.setText('در حال بررسی آخرین انتشار…' if self.manifest is None else 'در حال دریافت فایل‌های تغییرکرده…')
-        task=UpdateTask(self.root,self.manifest,self);self.task=task
+        self.status.setText('در حال بررسی آخرین انتشار…' if self.manifest is None else 'در حال دریافت نسخهٔ جدید EXE…' if self.executable else 'در حال دریافت فایل‌های تغییرکرده…')
+        task=UpdateTask(self.root,self.manifest,self,executable=self.executable);self.task=task
         task.result.connect(self.received);task.failure.connect(self.failed)
         task.progress.connect(self.progress);task.finished.connect(self.worker_done);task.start()
 
@@ -107,7 +118,10 @@ class SettingsDialog(QDialog):
             if version_tuple(manifest['version'])<=version_tuple(VERSION):
                 self.manifest=None;self.status.setText('برنامه به‌روز است.');return
             self.manifest=manifest
-            self.status.setText('نسخهٔ '+manifest['version']+' آماده است. '+str(len(plan['changed']))+' فایل، حدود '+f"{plan['bytes']/1024:.1f}"+' کیلوبایت دریافت می‌شود. پس از نصب، برنامه دوباره باز می‌شود.')
+            self.status.setText('نسخهٔ '+manifest['version']+' آماده است. '+
+                ('دریافت EXE کامل، حدود '+f"{plan['bytes']/1048576:.1f}"+' مگابایت.' if self.executable else
+                 str(len(plan['changed']))+' فایل، حدود '+f"{plan['bytes']/1024:.1f}"+' کیلوبایت دریافت می‌شود.')+
+                ' پس از نصب، برنامه دوباره باز می‌شود.')
             if 'requirements.txt' in plan['changed']:
                 self.status.setText(self.status.text()+' وابستگی‌های جدید نیز در صورت نیاز دریافت می‌شوند.')
             self.action.setText('دریافت آپدیت')

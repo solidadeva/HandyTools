@@ -12,7 +12,7 @@ Download the latest **HandyToolsApp-Windows** ZIP from [Releases](https://github
 
 Open **Settings (gear) → Check for updates**. The updater compares SHA-256 hashes and downloads only changed app files from the immutable release commit. FFmpeg, media files, settings and the existing Python environment are retained. New dependencies are installed only when requirements change. Installation waits for the app to close, backs up changed files, applies the update and restarts. On failure, app files are rolled back; dependency-environment changes cannot be rolled back automatically.
 
-Versions 0.1/0.2 need one initial upgrade to 0.3.0 to obtain the updater. Frozen EXE updates are not supported yet.
+Versions 0.1/0.2 need one initial upgrade to 0.3.0 to obtain the updater. Portable EXE v0.4.3 and later supports Settings updates: it downloads the complete new EXE, checks SHA-256, closes the app, replaces the executable and restarts. FFmpeg and user data are retained. EXE v0.4.2 and earlier needs one manual download to enable this.
 
 ## Launcher
 
@@ -44,4 +44,4 @@ See [راهنمای فارسی](README-fa.md) and [third-party notices](THIRD-PA
 
 Run `Build-Windows.bat` after `Install.bat`. The standalone output is `dist/portable/HandyToolsApp.exe`. The build validates it from an isolated directory containing only that EXE, before creating the release artifact and SHA-256 checksum. GitHub Actions builds and smoke-tests the Windows x64 executable before publishing.
 
-Old onedir builds at `dist/HandyToolsApp/HandyToolsApp.exe` must retain their complete `_internal` directory. A `Failed to load Python DLL ... _internal/python312.dll` error after moving only that old EXE is resolved by restoring the complete folder, creating a shortcut, or rebuilding with the new script. Updating source files does not change an already-built EXE; rebuild or download the new standalone release. Frozen EXE per-file updates remain unsupported.
+Old onedir builds at `dist/HandyToolsApp/HandyToolsApp.exe` must retain their complete `_internal` directory. A `Failed to load Python DLL ... _internal/python312.dll` error after moving only that old EXE is resolved by restoring the complete folder, creating a shortcut, or rebuilding with the new script. Updating source files does not change an already-built EXE; rebuild or download the new standalone release. The EXE updater downloads the complete standalone executable; per-file transfers remain available for the Python source edition.

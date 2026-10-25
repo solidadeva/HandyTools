@@ -113,6 +113,31 @@ class AppTests(unittest.TestCase):
         self.assertEqual(dialog.action.text(),'دریافت آپدیت')
         dialog.close()
 
+    def test_frozen_settings_enable_and_route_executable_updates(self):
+        from update_ui import SettingsDialog, UpdateTask
+        package=dict(kind='windows-exe',version='0.5.0',name='HandyToolsApp-Windows-x64-v0.5.0.exe',size=55*1048576)
+        with patch('update_ui.sys.frozen',True,create=True):
+            dialog=SettingsDialog(self.w)
+        self.addCleanup(dialog.close)
+        self.assertTrue(dialog.action.isEnabled())
+        self.assertTrue(dialog.executable)
+        with patch('update_ui.latest_exe_release',return_value=package), patch('update_ui.latest_release') as source:
+            task=UpdateTask(self.folder,executable=True)
+            results=[];task.result.connect(results.append);task.run()
+            source.assert_not_called()
+        dialog.received(results[0])
+        self.assertIn('55.0',dialog.status.text())
+        self.assertEqual(dialog.action.text(),'دریافت آپدیت')
+        stage=self.folder/'exe-stage';stage.mkdir()
+        with patch('update_ui.stage_exe_update',return_value=stage) as staged:
+            task=UpdateTask(self.folder,package,executable=True)
+            results=[];task.result.connect(results.append);task.run()
+            staged.assert_called_once()
+        dialog.received(results[0]);self.assertEqual(dialog.action.text(),'نصب و راه‌اندازی مجدد')
+        with patch('update_ui.start_exe_installer') as installer, patch.object(self.w,'close'):
+            dialog.action_clicked();installer.assert_called_once()
+        self.assertIsNone(dialog.stage)
+
     def test_window_controls_and_triangle_pulse(self):
         normal=self.w.size()
         QTest.mouseClick(self.w.maximize_button,Qt.MouseButton.LeftButton)
