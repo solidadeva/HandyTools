@@ -11,6 +11,12 @@ $lockPath = $null
 function Save-Result([bool]$ok, [string]$message) {
     @{ ok=$ok; message=$message } | ConvertTo-Json | Set-Content -LiteralPath $result -Encoding UTF8
 }
+function Get-Sha256([string]$path) {
+    $stream = [IO.File]::OpenRead($path)
+    $hash = [Security.Cryptography.SHA256]::Create()
+    try { return ([BitConverter]::ToString($hash.ComputeHash($stream))).Replace('-', '').ToLowerInvariant() }
+    finally { $stream.Dispose(); $hash.Dispose() }
+}
 function Replace-Retry([string]$source, [string]$destination, [string]$old) {
     # A PyInstaller one-file bootloader can hold the EXE briefly after Python exits.
     for ($attempt=0; $attempt -lt 120; $attempt++) {
@@ -30,7 +36,7 @@ try {
     $package = Join-Path $stage 'package.exe'
     if (-not (Test-Path -LiteralPath $target -PathType Leaf)) { throw 'Installed EXE was not found.' }
     if ((Get-Item -LiteralPath $package).Length -ne [long]$cfg.package.size -or
-        (Get-FileHash -LiteralPath $package -Algorithm SHA256).Hash.ToLowerInvariant() -ne $cfg.package.sha256) {
+        (Get-Sha256 $package) -ne $cfg.package.sha256) {
         throw 'The executable update failed checksum verification.'
     }
     $token = [guid]::NewGuid().ToString('N')
@@ -38,7 +44,7 @@ try {
     $replacement = Join-Path $folder ('.handy-new-' + $token + '.exe')
     $backup = Join-Path $folder ('.handy-previous-' + $token + '.exe')
     [IO.File]::Copy($package, $replacement, $false)
-    if ((Get-FileHash -LiteralPath $replacement -Algorithm SHA256).Hash.ToLowerInvariant() -ne $cfg.package.sha256) {
+    if ((Get-Sha256 $replacement) -ne $cfg.package.sha256) {
         throw 'The local executable copy failed checksum verification.'
     }
     $parent = Get-Process -Id ([int]$cfg.parentPid) -ErrorAction SilentlyContinue

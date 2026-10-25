@@ -111,8 +111,11 @@ def start_exe_installer(target, stage, parent_pid, restart_smoke_report=None):
                   smokeReport=str(Path(restart_smoke_report).absolute()) if restart_smoke_report else None)
     (stage/'install.json').write_text(json.dumps(config, ensure_ascii=False), encoding='utf-8-sig')
     powershell = Path(os.environ.get('SystemRoot', r'C:\Windows'))/'System32/WindowsPowerShell/v1.0/powershell.exe'
+    environment = dict(os.environ, PYINSTALLER_RESET_ENVIRONMENT='1')
+    # A PowerShell 7 parent can export module paths incompatible with Windows PowerShell.
+    environment.pop('PSModulePath', None)
     return subprocess.Popen([str(powershell), '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass',
         '-File', str(stage/'install.ps1'), '-Config', str(stage/'install.json')],
         stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
         creationflags=subprocess.CREATE_NO_WINDOW,
-        env=dict(os.environ, PYINSTALLER_RESET_ENVIRONMENT='1'))
+        env=environment)

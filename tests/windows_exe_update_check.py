@@ -42,9 +42,10 @@ def main():
                          '_PYI_APPLICATION_HOME_DIR':str(root/'removed extraction'),
                          '_PYI_PARENT_PROCESS_LEVEL':'1'}):
             helper=start_exe_installer(target,stage,parent.pid,restart_smoke_report=report)
-        if helper.wait(timeout=180) != 0:
+        helper_status=helper.wait(timeout=180)
+        parent.wait(timeout=120)
+        if helper_status != 0:
             raise AssertionError((stage/'result.json').read_text(encoding='utf-8-sig') if (stage/'result.json').exists() else 'No installer result')
-        parent.wait(timeout=30)
         assert old_report.is_file() and report.is_file()
         assert json.loads(report.read_text())==dict(version=VERSION,frozen=True,ok=True)
         assert json.loads((stage/'result.json').read_text(encoding='utf-8-sig'))['ok']
