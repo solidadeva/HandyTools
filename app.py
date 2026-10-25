@@ -256,7 +256,7 @@ class ToolPage(QWidget):
     def success(self, value):
         self.output = Path(value) if value else None
         self.progress(100, 'فایل آماده شد' if value else 'موتور دانلود به‌روز شد')
-    self.refresh_output_actions()
+        self.refresh_output_actions()
         self.output_name.setText(self.output.name if self.output else 'موتور دانلود آمادهٔ استفاده است.')
         self.output_name.setToolTip(str(self.output or ''))
         if value:
