@@ -8,6 +8,7 @@ $replaced = $false
 $cfg = $null
 $guard = $null
 $lockPath = $null
+$phase = 'prepare'
 function Save-Result([bool]$ok, [string]$message) {
     @{ ok=$ok; message=$message } | ConvertTo-Json | Set-Content -LiteralPath $result -Encoding UTF8
 }
@@ -16,6 +17,15 @@ function Get-Sha256([string]$path) {
     $hash = [Security.Cryptography.SHA256]::Create()
     try { return ([BitConverter]::ToString($hash.ComputeHash($stream))).Replace('-', '').ToLowerInvariant() }
     finally { $stream.Dispose(); $hash.Dispose() }
+}
+function Start-App([string]$file, [string]$folder, [string]$arguments) {
+    # ProcessStartInfo treats Unicode, spaces and brackets as literal paths.
+    $info = New-Object Diagnostics.ProcessStartInfo
+    $info.FileName = $file
+    $info.WorkingDirectory = $folder
+    $info.UseShellExecute = $false
+    $info.Arguments = $arguments
+    return [Diagnostics.Process]::Start($info)
 }
 function Replace-Retry([string]$source, [string]$destination, [string]$old) {
     # A PyInstaller one-file bootloader can hold the EXE briefly after Python exits.
@@ -49,17 +59,19 @@ try {
     }
     $parent = Get-Process -Id ([int]$cfg.parentPid) -ErrorAction SilentlyContinue
     if ($parent -and -not $parent.WaitForExit(120000)) { throw 'The app did not exit; update cancelled.' }
+    $phase = 'replace'
     Replace-Retry $replacement $target $backup
     $replaced = $true
+    $phase = 'restart'
     $env:PYINSTALLER_RESET_ENVIRONMENT = '1'
     if ($cfg.smokeReport) {
         # Used only by the Windows integration check, with correctly quoted paths.
         $argsText = '--smoke-test "' + [string]$cfg.smokeReport + '"'
-        $started = Start-Process -FilePath $target -WorkingDirectory $folder -ArgumentList $argsText -PassThru
+        $started = Start-App $target $folder $argsText
         if (-not $started.WaitForExit(120000) -or $started.ExitCode -ne 0 -or
             -not (Test-Path -LiteralPath ([string]$cfg.smokeReport))) { throw 'Updated EXE startup failed.' }
     } else {
-        $started = Start-Process -FilePath $target -WorkingDirectory $folder -PassThru
+        $started = Start-App $target $folder ''
         if ($started.WaitForExit(3000) -and $started.ExitCode -ne 0) { throw 'Updated EXE exited with an error.' }
     }
     Save-Result $true 'Executable updated and restarted.'
@@ -67,14 +79,14 @@ try {
     Remove-Item -LiteralPath $package -Force -ErrorAction SilentlyContinue
     exit 0
 } catch {
-    $message = $_.Exception.Message
+    $message = $phase + ': ' + $_.Exception.Message
     if ($replaced -and (Test-Path -LiteralPath $backup)) {
         try {
-            Replace-Retry $backup $target $null
+            Replace-Retry $backup $target $replacement
             $env:PYINSTALLER_RESET_ENVIRONMENT = '1'
-            if (-not $cfg.smokeReport) { Start-Process -FilePath $target -WorkingDirectory (Split-Path -Parent $target) }
+            if (-not $cfg.smokeReport) { $restored = Start-App $target (Split-Path -Parent $target) '' }
             $message += ' The previous EXE has been restored.'
-        } catch { $message += ' Restore the previous EXE manually from: ' + $backup }
+        } catch { $message += ' Rollback: ' + $_.Exception.Message + '. Restore the previous EXE manually from: ' + $backup }
     }
     Save-Result $false $message
     if (-not $cfg.smokeReport) {
