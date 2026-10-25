@@ -1,2 +1,2 @@
 """Single release version used by the UI, updater and publisher."""
-VERSION = '0.4.3'
+VERSION = '0.4.4'

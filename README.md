@@ -1,6 +1,6 @@
 # Handy Tools App
 
-A compact Windows launcher for **Easy Downloader** and **Easy Converter**, with shared light/dark themes and independent tool windows.
+A compact Windows/macOS launcher for **Easy Downloader** and **Easy Converter**, with shared light/dark themes and independent tool windows.
 
 ![Launcher](assets/home-dark.png)
 
@@ -45,3 +45,13 @@ See [راهنمای فارسی](README-fa.md) and [third-party notices](THIRD-PA
 Run `Build-Windows.bat` after `Install.bat`. The standalone output is `dist/portable/HandyToolsApp.exe`. The build validates it from an isolated directory containing only that EXE, before creating the release artifact and SHA-256 checksum. GitHub Actions builds and smoke-tests the Windows x64 executable before publishing.
 
 Old onedir builds at `dist/HandyToolsApp/HandyToolsApp.exe` must retain their complete `_internal` directory. A `Failed to load Python DLL ... _internal/python312.dll` error after moving only that old EXE is resolved by restoring the complete folder, creating a shortcut, or rebuilding with the new script. Updating source files does not change an already-built EXE; rebuild or download the new standalone release. The EXE updater downloads the complete standalone executable; per-file transfers remain available for the Python source edition.
+
+## macOS 15 or later
+
+Download the **macOS-arm64 DMG** for Apple Silicon (M1/M2/M3/M4 or newer) or **macOS-x86_64 DMG** for Intel. Open the DMG and drag HandyToolsApp into Applications, then launch the installed app. Python, Homebrew, FFmpeg and Deno are not needed on the user's Mac; native media tools are included. The Mac downloader uses an isolated native yt-dlp worker, with verified H.264/yuv420p + AAC MP4 or MP3 output and cancellation. Windows retains its existing PowerShell engine.
+
+These first Mac builds are ad-hoc signed, not Apple Developer signed/notarized. If macOS blocks first launch, review the release origin and use System Settings → Privacy & Security → Open Anyway for this app. No global security settings need to be disabled.
+
+Mac Settings can check for the correct architecture's update, download and verify its SHA-256, then open the DMG. Quit the app and replace it in Applications with Finder; app-bundle replacement is not automatic yet. Windows EXE updating and Python per-file updating retain their existing behavior.
+
+To build on a Mac: install native `ffmpeg` and `deno` using Homebrew, install requirements-build.txt in a virtual environment, then run `python build_macos.py`. GitHub Actions builds both architectures and tests relocated app startup with Homebrew removed from PATH, bundled tools, real media conversion, native MP4/MP3 downloads against a local HTTP server, signatures and DMG integrity. Live YouTube access is not used as a CI dependency.

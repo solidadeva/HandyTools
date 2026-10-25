@@ -130,7 +130,8 @@ class ToolPage(QWidget):
         self.cancel_button.setEnabled(False)
         actions.addWidget(self.start_button, 1); actions.addWidget(self.cancel_button)
         if kind == 'download':
-            self.update = button('به‌روزرسانی موتور', lambda: self.start(update=True))
+            self.update = button('به‌روزرسانی برنامه' if sys.platform=='darwin' else 'به‌روزرسانی موتور',
+                                 self.window.open_settings if sys.platform=='darwin' else lambda: self.start(update=True))
             actions.addWidget(self.update); self.inputs.append(self.update)
         box.addLayout(actions)
         self.bar = QProgressBar(); self.bar.setTextVisible(False); self.bar.setValue(0)
@@ -316,7 +317,7 @@ class ToolPage(QWidget):
 def tool_styles(theme):
     c = DARK if theme == 'dark' else LIGHT
     return ('''
-        QWidget { background: %(bg)s; color: %(text)s; font-family: 'Segoe UI Variable', 'Segoe UI', 'Noto Sans Arabic'; font-size: 13px; }
+        QWidget { background: %(bg)s; color: %(text)s; font-family: 'SF Pro Text', '.AppleSystemUIFont', 'Segoe UI Variable', 'Segoe UI', 'Noto Sans Arabic'; font-size: 13px; }
         QScrollArea { border: none; }
         QLabel { background: transparent; }
         QLabel#muted { color: %(muted)s; font-size: 12px; }
@@ -383,6 +384,23 @@ def main(smoke_report=None):
                 tool_window = window.open_tool(name)
                 if tool_window.grab().isNull():
                     raise RuntimeError('Cannot render bundled tool: ' + name)
+            if sys.platform == 'darwin' and getattr(sys,'frozen',False):
+                import subprocess
+                from engine import tool, Conversion, inspect
+                # Force bundled binaries; a clean Mac must not need Homebrew.
+                for name in ('ffmpeg','ffprobe','deno'):
+                    binary=Path(tool(name)).resolve()
+                    if not binary.is_relative_to(Path(sys._MEIPASS).resolve()):
+                        raise RuntimeError('Tool is not bundled: '+name)
+                    subprocess.run([str(binary),'-version' if name!='deno' else '--version'],check=True,capture_output=True,timeout=30)
+                fixture=Path(temp)/'sample.mkv'
+                subprocess.run([tool('ffmpeg'),'-v','error','-f','lavfi','-i','testsrc2=size=160x120:rate=10:duration=1',
+                    '-f','lavfi','-i','sine=duration=1','-c:v','ffv1','-c:a','pcm_s16le',str(fixture)],check=True,timeout=30)
+                converted=Conversion().run(fixture,Path(temp),'MP4')
+                streams=inspect(converted)['streams']
+                if streams[0]['codec_name']!='h264' or streams[1]['codec_name']!='aac':
+                    raise RuntimeError('Bundled FFmpeg conversion failed.')
+                import yt_dlp
             window.open_settings()
             if not window.settings_dialog.action.isEnabled():
                 raise RuntimeError('Update checking is disabled in this build.')

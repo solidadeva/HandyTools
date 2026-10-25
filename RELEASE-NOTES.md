@@ -1,10 +1,12 @@
-Handy Tools App v0.4.3
+Handy Tools App v0.4.4 — macOS edition
 
-- Enable Settings → Check for updates in the portable Windows EXE.
-- Select the matching Windows x64 release asset, stream the new executable with progress/cancellation and verify its size, SHA-256 and Windows header before staging it.
-- Install only after active tools/installers finish. An independent PowerShell helper waits for the app to exit, checks the staged checksum again, atomically replaces the EXE in its existing location and restarts it with a fresh PyInstaller environment.
-- Preserve the old EXE if download/verification fails; restore it if replacement or immediate restart fails. Settings, FFmpeg, GenyConnect and user files are retained.
-- Check folder write permissions before closing the app and guard against simultaneous installers.
-- Windows CI tests actual EXE replacement/restart with Unicode/spaced paths and stale frozen-process environment, plus rollback and restored-app startup after a deliberately invalid replacement.
+- Native macOS 15+ app/DMG builds for Apple Silicon arm64 and Intel x86_64, alongside Windows x64.
+- Bundle native FFmpeg, FFprobe, Deno, yt-dlp and its JS challenge provider; no Python/Homebrew installation needed by Mac users.
+- Add an isolated native downloader on macOS with MP3 or H.264/yuv420p + AAC MP4 output verification, original-file preservation, progress and process-tree cancellation. Windows keeps its existing downloader engine.
+- Detect bundled media tools and use macOS app-data paths; display MAC in the launcher footer.
+- Mac Settings selects the correct architecture's release, verifies the DMG size/SHA-256 and opens the installer. Drag the new app to Applications; automatic Mac app replacement is not implemented.
+- macOS CI validates each relocated app with a clean PATH, bundled binaries, real FFmpeg conversion, native MP4 and MP3 downloads from a local test server, ad-hoc signatures and DMG integrity.
 
-EXE v0.4.2 and earlier has no built-in updater: download the v0.4.3 EXE manually once. Future EXE updates are available from Settings. Portable EXE updates download the complete EXE; the Python edition continues to download only changed source files.
+Install: choose macOS-arm64 for M1 and newer, or macOS-x86_64 for Intel. Open the DMG and drag HandyToolsApp to Applications. These builds are ad-hoc signed and are not Apple notarized. If first launch is blocked, review the download source and use System Settings → Privacy & Security → Open Anyway for this app. macOS 15 or later is required.
+
+Windows: update through Settings as before. Analytics/installation tracking has not been added.

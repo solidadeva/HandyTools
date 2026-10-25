@@ -6,6 +6,9 @@ try:
     from pathlib import Path
     if (Path(__file__).parent / '.handy-update.lock').exists():
         raise RuntimeError('An update is being installed. Please wait and open the app again. If installation was interrupted, inspect the update log before removing .handy-update.lock.')
+    if len(sys.argv) == 3 and sys.argv[1] == '--download-job':
+        from posix_downloader import run_job
+        sys.exit(run_job(sys.argv[2]))
     from app import main
     smoke_report = sys.argv[2] if len(sys.argv) == 3 and sys.argv[1] == '--smoke-test' else None
     result = main(smoke_report=smoke_report)
@@ -15,6 +18,8 @@ except Exception:
         # CI must fail instead of waiting behind a modal window.
         if len(sys.argv) == 3:
             Path(sys.argv[2]).with_suffix('.error.txt').write_text(detail, encoding='utf-8')
+    elif '--download-job' in sys.argv:
+        print(detail, file=sys.stderr, flush=True)
     elif sys.platform == 'win32':
         import ctypes
         ctypes.windll.user32.MessageBoxW(None,

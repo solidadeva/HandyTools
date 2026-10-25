@@ -51,8 +51,38 @@ jobs:
             release/*.exe
             release/*.sha256
           if-no-files-found: error
+  macos-build:
+    needs: test
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            arch: arm64
+          - runner: macos-15-intel
+            arch: x86_64
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Install native media tools and build dependencies
+        run: |
+          brew install ffmpeg deno
+          python -m pip install -r requirements-build.txt
+      - name: Build and validate native Mac app and DMG
+        run: python build_macos.py
+      - uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}
+          path: |
+            release/*.dmg
+            release/*.sha256
+          if-no-files-found: error
   release:
-    needs: [test, windows-build]
+    needs: [test, windows-build, macos-build]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -66,6 +96,11 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: windows-portable
+          path: release
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: macos-*
+          merge-multiple: true
           path: release
       - name: Publish a new version
         env:

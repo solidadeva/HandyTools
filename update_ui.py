@@ -5,7 +5,8 @@ import shutil
 import sys
 import threading
 
-from PySide6.QtCore import Qt,QThread,Signal
+from PySide6.QtCore import Qt,QThread,Signal,QUrl
+from PySide6.QtGui import QDesktopServices
 from PySide6.QtWidgets import (QDialog,QVBoxLayout,QHBoxLayout,QLabel,QComboBox,QPushButton,
                                QProgressBar,QMessageBox,QFrame)
 from app import tool_styles
@@ -14,6 +15,7 @@ from icons import IconComboBox as QComboBox
 from updater import (latest_release,version_tuple,plan_update,stage_update,start_installer,UpdateCancelled)
 from version import VERSION
 from exe_updater import latest_exe_release, stage_exe_update, start_exe_installer
+from mac_updater import latest_mac_release, stage_mac_update, staged_installer
 
 
 class UpdateTask(QThread):
@@ -21,12 +23,19 @@ class UpdateTask(QThread):
     failure=Signal(str)
     progress=Signal(object,str)
 
-    def __init__(self,root,manifest=None,parent=None,executable=False):
-        super().__init__(parent);self.root=root;self.manifest=manifest;self.executable=executable;self.cancel_event=threading.Event()
+    def __init__(self,root,manifest=None,parent=None,executable=False,macos=False):
+        super().__init__(parent);self.root=root;self.manifest=manifest;self.executable=executable;self.macos=macos;self.cancel_event=threading.Event()
 
     def run(self):
         try:
-            if self.executable:
+            if self.macos:
+                if self.manifest is None:
+                    manifest=latest_mac_release(self.cancel_event)
+                    self.result.emit((manifest,dict(changed=[manifest['name']],bytes=manifest['size'])))
+                else:
+                    self.result.emit(stage_mac_update(self.manifest,self.cancel_event,
+                        lambda percent,text:self.progress.emit(percent,text)))
+            elif self.executable:
                 if self.manifest is None:
                     manifest=latest_exe_release(self.cancel_event)
                     self.result.emit((manifest,dict(changed=[manifest['name']], bytes=manifest['size'])))
@@ -50,7 +59,8 @@ class SettingsDialog(QDialog):
     def __init__(self,manager):
         super().__init__(manager)
         self.manager=manager;self.root=Path(__file__).resolve().parent
-        self.executable=bool(getattr(sys,'frozen',False))
+        self.macos=bool(getattr(sys,'frozen',False) and sys.platform=='darwin')
+        self.executable=bool(getattr(sys,'frozen',False) and sys.platform!='darwin')
         self.task=None;self.manifest=None;self.stage=None;self.pending_close=False
         self.setWindowTitle('تنظیمات • Handy Tools App');self.resize(530,420);self.setMinimumWidth(430)
         self.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
@@ -73,7 +83,9 @@ class SettingsDialog(QDialog):
         row.addWidget(self.action,1);row.addWidget(self.cancel);box.addLayout(row)
         set_button_icon(self.action, "refresh"); set_button_icon(self.cancel, "close")
         self.apply_theme()
-        if self.executable:
+        if self.macos:
+            self.status.setText('نسخهٔ جدید مخصوص مک شما دریافت و بررسی می‌شود؛ نصب با کشیدن برنامه به Applications انجام می‌شود.')
+        elif self.executable:
             self.status.setText('نسخهٔ جدید EXE دریافت و بررسی می‌شود؛ پس از نصب، برنامه دوباره باز می‌شود. FFmpeg، تنظیمات و فایل‌های شما حفظ می‌شوند.')
 
     def apply_theme(self):
@@ -95,7 +107,10 @@ class SettingsDialog(QDialog):
             if self.manager.setup_task or self.manager.external_busy() or any(p.is_busy() for p in self.manager.pages()):
                 self.status.setText('ابتدا عملیات فعال را تمام یا لغو کنید؛ سپس نصب آپدیت را بزنید.');return
             try:
-                if self.executable:
+                if self.macos:
+                    if not QDesktopServices.openUrl(QUrl.fromLocalFile(str(staged_installer(self.stage)))):
+                        raise RuntimeError('نصاب مک باز نشد؛ دوباره تلاش کنید.')
+                elif self.executable:
                     start_exe_installer(Path(sys.executable),self.stage,os.getpid())
                 else:
                     start_installer(self.root,self.stage,os.getpid())
@@ -104,8 +119,8 @@ class SettingsDialog(QDialog):
             self.stage=None  # ownership transferred to the separate installer
             self.accept();self.manager.close();return
         self.action.setEnabled(False);self.cancel.setEnabled(True);self.bar.setRange(0,0)
-        self.status.setText('در حال بررسی آخرین انتشار…' if self.manifest is None else 'در حال دریافت نسخهٔ جدید EXE…' if self.executable else 'در حال دریافت فایل‌های تغییرکرده…')
-        task=UpdateTask(self.root,self.manifest,self,executable=self.executable);self.task=task
+        self.status.setText('در حال بررسی آخرین انتشار…' if self.manifest is None else 'در حال دریافت بستهٔ مک…' if self.macos else 'در حال دریافت نسخهٔ جدید EXE…' if self.executable else 'در حال دریافت فایل‌های تغییرکرده…')
+        task=UpdateTask(self.root,self.manifest,self,executable=self.executable,macos=self.macos);self.task=task
         task.result.connect(self.received);task.failure.connect(self.failed)
         task.progress.connect(self.progress);task.finished.connect(self.worker_done);task.start()
 
@@ -119,7 +134,7 @@ class SettingsDialog(QDialog):
                 self.manifest=None;self.status.setText('برنامه به‌روز است.');return
             self.manifest=manifest
             self.status.setText('نسخهٔ '+manifest['version']+' آماده است. '+
-                ('دریافت EXE کامل، حدود '+f"{plan['bytes']/1048576:.1f}"+' مگابایت.' if self.executable else
+                ('دریافت بستهٔ کامل، حدود '+f"{plan['bytes']/1048576:.1f}"+' مگابایت.' if self.executable or self.macos else
                  str(len(plan['changed']))+' فایل، حدود '+f"{plan['bytes']/1024:.1f}"+' کیلوبایت دریافت می‌شود.')+
                 ' پس از نصب، برنامه دوباره باز می‌شود.')
             if 'requirements.txt' in plan['changed']:
@@ -127,7 +142,8 @@ class SettingsDialog(QDialog):
             self.action.setText('دریافت آپدیت')
         else:
             self.stage=Path(result);self.status.setText('فایل‌ها دریافت و بررسی شدند. برای نصب، برنامه بسته و دوباره باز می‌شود.')
-            self.action.setText('نصب و راه‌اندازی مجدد');self.bar.setValue(100)
+            self.action.setText('باز کردن نصاب مک' if self.macos else 'نصب و راه‌اندازی مجدد');self.bar.setValue(100)
+            if self.macos:self.status.setText('بسته بررسی شد. نصاب را باز کنید و برنامه را به Applications بکشید؛ سپس نسخهٔ نصب‌شده را اجرا کنید.')
 
     def failed(self,text):
         self.status.setText('آپدیت انجام نشد: '+text)

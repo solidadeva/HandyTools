@@ -1,6 +1,6 @@
-Handy Tools App 0.4.3
+Handy Tools App 0.4.4
 Linux / Python 3.12 / Qt offscreen:
-39 unittest checks passed plus all 10 FFmpeg output-format integration checks.
+42 unittest checks passed plus all 10 FFmpeg output-format integration checks.
 HEIC tiled primary-image decoding, source preservation, no overwrite and cancellation passed.
 Compact resizable launcher, saved size, independent windows, theme sharing and real Settings/update-check wiring passed.
 Updater: per-file download, immutable commit URLs, SHA-256, bounded network reads, path/symlink rejection, cancellation, owned-file deletion, app-file rollback and cache/user-file preservation passed.
@@ -13,3 +13,5 @@ External app tests: native architecture/package selection, self-updater exclusio
 0.4.2: all 33 checks and source startup smoke test passed locally. A Windows CI build now validates the moved single-file EXE with no neighboring _internal directory, including both tool windows, Settings, SVG rendering, HEIF imports and bundled resources, before release publication. Actual YouTube download, UAC and video conversion on Windows are not covered by this startup smoke test.
 
 0.4.3: executable update selection, SHA-256/size/origin validation, streaming/cancellation/cleanup, tampered staging rejection, frozen Settings routing and fresh restart environment covered. Windows CI additionally performs real atomic EXE replacement/restart and rollback to a runnable old EXE. Whole-EXE updates preserve existing external tools and settings; incremental EXE binary deltas are not implemented.
+
+0.4.4: architecture-specific Mac update selection, installer origin/checksum/cancellation checks and real native video/audio downloads through the isolated POSIX worker passed on Linux. macOS build jobs validate each architecture with bundled tools, real conversion, packaged native download, moved-app startup, signatures and DMG verification. MacOS 15+ is the initial target; Apple notarization and automatic app-bundle replacement are not implemented.

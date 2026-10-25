@@ -4,6 +4,7 @@ import os
 from pathlib import Path
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -113,7 +114,7 @@ class Task(QThread):
 
     def download(self):
         if os.name != 'nt':
-            raise RuntimeError('موتور دانلود این نسخه مخصوص ویندوز است.')
+            return self.download_posix()
         powershell = Path(os.environ.get('SystemRoot', r'C:\Windows')) / 'System32/WindowsPowerShell/v1.0/powershell.exe'
         if not powershell.is_file():
             raise RuntimeError('Windows PowerShell was not found.')
@@ -188,3 +189,54 @@ class Task(QThread):
                 if self.process.stderr:
                     self.process.stderr.close()
                 self.process = None
+
+    def download_posix(self):
+        if self.kind == 'update':
+            raise RuntimeError('موتور دانلود مک همراه نسخهٔ جدید برنامه به‌روز می‌شود.')
+        with tempfile.TemporaryDirectory(prefix='handy-download-') as temporary:
+            folder=Path(temporary)
+            jobfile=folder/'job.json'
+            jobfile.write_text(json.dumps(self.options,ensure_ascii=False),encoding='utf-8')
+            log=folder/'progress.log'
+            args=[sys.executable]
+            if not getattr(sys,'frozen',False): args.append(str(resource_path('launch.pyw')))
+            args += ['--download-job',str(jobfile)]
+            environment=dict(os.environ,PYTHONIOENCODING='utf-8',PYINSTALLER_RESET_ENVIRONMENT='1')
+            position=0;output='';tail=[]
+            def drain():
+                nonlocal position,output
+                with log.open('rb') as stream:
+                    stream.seek(position);data=stream.read()
+                end=data.rfind(b'\n')+1;position+=end
+                for line in data[:end].decode('utf-8',errors='replace').splitlines():
+                    tail.append(line);del tail[:-30]
+                    kind,value=parse_report(line)
+                    if kind=='file':output=value
+                    elif kind=='progress':self.progress.emit(*value)
+                    elif kind=='status':self.progress.emit(None,value)
+                    else:self.log.emit(value)
+            self.check()
+            with log.open('wb') as stream:
+                self.process=subprocess.Popen(args,stdout=stream,stderr=stream,env=environment,start_new_session=True)
+            try:
+                while self.process.poll() is None:
+                    if self.stop_event.wait(.15):
+                        try: os.killpg(self.process.pid,signal.SIGTERM)
+                        except ProcessLookupError: pass
+                        try:self.process.wait(timeout=5)
+                        except subprocess.TimeoutExpired:
+                            try:os.killpg(self.process.pid,signal.SIGKILL)
+                            except ProcessLookupError:pass
+                        raise Cancelled()
+                    drain()
+                drain()
+                if self.process.returncode:
+                    raise RuntimeError('\n'.join(tail[-15:]))
+                if not output or not Path(output).is_file():
+                    raise RuntimeError('فایل خروجی پیدا نشد.\n'+'\n'.join(tail[-10:]))
+                return output
+            finally:
+                if self.process.poll() is None:
+                    try:os.killpg(self.process.pid,signal.SIGKILL)
+                    except ProcessLookupError:pass
+                self.process.wait(timeout=10);self.process=None

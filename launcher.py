@@ -2,6 +2,7 @@
 from dataclasses import dataclass
 import json
 import math
+import sys
 from pathlib import Path
 
 from PySide6.QtCore import (Qt, QRectF, QPoint, QPointF, QSize, QSettings, QTimer, Signal,
@@ -382,7 +383,7 @@ class Window(QMainWindow):
         self.footer=QWidget(self.surface);self.footer.setObjectName('footer')
         row=QHBoxLayout(self.footer);row.setContentsMargins(4,0,4,0);row.setSpacing(14)
         from app import label
-        self.version=label('WIN  ·  v'+VERSION+'  /  BY SOLIDADEVA');row.addWidget(self.version);row.addStretch()
+        self.version=label(('MAC' if sys.platform=='darwin' else 'WIN')+'  ·  v'+VERSION+'  /  BY SOLIDADEVA');row.addWidget(self.version);row.addStretch()
         self.donate_button=self.icon_button('donate','دونیت — به‌زودی',lambda:self.coming_soon(self.donate_button))
         self.settings_button=self.icon_button('settings','تنظیمات و آپدیت',self.open_settings)
         row.addWidget(self.donate_button);row.addWidget(self.settings_button)
@@ -503,7 +504,7 @@ class Window(QMainWindow):
 
     def setup_finished(self):
         task=self.setup_task;self.setup_task=None
-        self.version.setText('WIN  ·  v'+VERSION+'  /  BY SOLIDADEVA')
+        self.version.setText(('MAC' if sys.platform=='darwin' else 'WIN')+'  ·  v'+VERSION+'  /  BY SOLIDADEVA')
         if task:
             task.deleteLater()
         self.finish_close()

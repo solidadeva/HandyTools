@@ -16,16 +16,17 @@ AUDIO = {'MP3', 'WAV', 'FLAC'}
 
 def tool(name):
     root = Path(sys.executable).parent if getattr(sys, 'frozen', False) else Path(__file__).parent
+    resources = Path(getattr(sys, '_MEIPASS', Path(__file__).parent))
     suffix = '.exe' if os.name == 'nt' else ''
     legacy = Path(os.environ.get('LOCALAPPDATA', Path.home() / 'AppData' / 'Local'))
-    for folder in (root / 'bin', root, cache_bin(), legacy / 'MinimalConvert' / 'ffmpeg' / 'bin',
+    for folder in (resources / 'bin', root / 'bin', root, cache_bin(), legacy / 'MinimalConvert' / 'ffmpeg' / 'bin',
                    legacy / 'SimpleDownloader' / 'bin'):
         candidate = folder / (name + suffix)
         if candidate.is_file():
             return str(candidate)
     found = shutil.which(name)
     if not found:
-        raise RuntimeError(f'{name} was not found. Put ffmpeg.exe and ffprobe.exe in the bin folder.')
+        raise RuntimeError(f'{name} was not found. Install FFmpeg or use the complete application bundle.')
     return found
 
 

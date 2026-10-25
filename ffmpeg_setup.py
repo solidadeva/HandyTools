@@ -20,6 +20,10 @@ class SetupCancelled(Exception):
 
 
 def cache_bin():
+    if platform.system() == 'Darwin':
+        return Path.home() / 'Library/Application Support/HandyToolsApp/bin'
+    if platform.system() != 'Windows':
+        return Path(os.environ.get('XDG_DATA_HOME', Path.home() / '.local/share')) / 'HandyToolsApp/bin'
     base = Path(os.environ.get('LOCALAPPDATA', Path.home() / 'AppData' / 'Local'))
     return base / 'HandyToolsApp' / 'bin'
 
