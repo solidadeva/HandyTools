@@ -9,6 +9,8 @@ from PySide6.QtCore import Qt,QThread,Signal
 from PySide6.QtWidgets import (QDialog,QVBoxLayout,QHBoxLayout,QLabel,QComboBox,QPushButton,
                                QProgressBar,QMessageBox,QFrame)
 from app import tool_styles
+from icons import set_button_icon, refresh_button_icons
+from icons import IconComboBox as QComboBox
 from updater import (latest_release,version_tuple,plan_update,stage_update,start_installer,UpdateCancelled)
 from version import VERSION
 
@@ -60,6 +62,7 @@ class SettingsDialog(QDialog):
         self.action=QPushButton('بررسی آپدیت');self.action.setObjectName('primary');self.action.clicked.connect(self.action_clicked)
         self.cancel=QPushButton('لغو دریافت');self.cancel.setEnabled(False);self.cancel.clicked.connect(self.cancel_task)
         row.addWidget(self.action,1);row.addWidget(self.cancel);box.addLayout(row)
+        set_button_icon(self.action, "refresh"); set_button_icon(self.cancel, "close")
         self.apply_theme()
         if getattr(sys,'frozen',False):
             self.action.setEnabled(False)
@@ -67,6 +70,7 @@ class SettingsDialog(QDialog):
 
     def apply_theme(self):
         self.setStyleSheet(tool_styles(self.manager.theme))
+        refresh_button_icons(self, self.manager.theme)
         target=0 if self.manager.theme=='dark' else 1
         self.theme.blockSignals(True);self.theme.setCurrentIndex(target);self.theme.blockSignals(False)
 

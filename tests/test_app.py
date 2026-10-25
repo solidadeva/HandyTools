@@ -19,7 +19,8 @@ class AppTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.app = QApplication.instance() or QApplication([])
-        cls.app.setStyle('Fusion')
+        from icons import IconStyle
+        cls.app.setStyle(IconStyle('Fusion'))
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -175,6 +176,56 @@ class AppTests(unittest.TestCase):
         self.assertEqual(streams[1]['codec_name'], 'aac')
         self.assertEqual(len(self.w.history), 1)
         output = p.output; self.w.clear_recent(); self.assertTrue(output.is_file())
+
+    def test_output_buttons_open_paths_and_report_errors(self):
+        page = self.w.open_tool('downloader').page
+        page.folder.setText(str(self.folder))
+        self.assertTrue(page.open_button.isEnabled())  # usable before the download completes
+        self.assertFalse(page.open_file_button.isEnabled())
+        with patch('app.sys.platform', 'win32'), patch('app.os.startfile', create=True) as opened:
+            QTest.mouseClick(page.open_button, Qt.MouseButton.LeftButton)
+            opened.assert_called_once_with(str(self.folder.resolve()))
+        output = self.folder / 'خروجی with spaces & [video].mp4'
+        output.write_bytes(b'output')
+        page.success(str(output))
+        # Editing the next destination must not redirect the previous result's folder.
+        page.folder.setText(str(self.folder / 'missing'))
+        with patch('app.QDesktopServices.openUrl', return_value=True) as opened:
+            QTest.mouseClick(page.open_file_button, Qt.MouseButton.LeftButton)
+            QTest.mouseClick(page.open_button, Qt.MouseButton.LeftButton)
+            self.assertEqual([x.args[0].toLocalFile() for x in opened.call_args_list],
+                             [str(output.resolve()), str(self.folder.resolve())])
+        with patch('app.QDesktopServices.openUrl', return_value=False), patch('app.QMessageBox.warning') as warning:
+            page.open_file(); warning.assert_called_once()
+        with patch('app.sys.platform', 'win32'), patch('app.os.startfile', create=True, side_effect=OSError('association missing')), patch('app.QMessageBox.warning') as warning:
+            page.open_file(); warning.assert_called_once()
+        output.unlink()
+        with patch('app.QMessageBox.warning') as warning:
+            page.open_file(); warning.assert_called_once()
+        self.assertFalse(page.open_file_button.isEnabled())
+        for _ in range(2):
+            QTest.mouseClick(page.details, Qt.MouseButton.LeftButton)
+            self.assertEqual(page.details.isChecked(), not page.log.isHidden())
+
+    def test_vector_icons_render_at_native_dpi_and_follow_theme(self):
+        from icons import ART, app_icon
+        from PySide6.QtCore import QSize
+        from PySide6.QtGui import QIcon
+        for name in ART:
+            icon = app_icon(name, '#007aff')
+            for scale in (1, 1.25, 1.5, 2, 3):
+                pm = icon.pixmap(QSize(24,24), scale)
+                self.assertFalse(pm.isNull(), name)
+                self.assertEqual(pm.width(), round(24*scale), name)
+                self.assertEqual(pm.devicePixelRatio(), scale, name)
+            normal = icon.pixmap(QSize(24,24)).toImage()
+            disabled = icon.pixmap(QSize(24,24), QIcon.Mode.Disabled).toImage()
+            self.assertGreater(sum(normal.pixelColor(x,y).alpha() for x in range(24) for y in range(24)),
+                               sum(disabled.pixelColor(x,y).alpha() for x in range(24) for y in range(24)))
+        page = self.w.open_tool('downloader').page
+        before = page.open_button.icon().pixmap(24,24).toImage()
+        self.w.toggle_theme()
+        self.assertNotEqual(before, page.open_button.icon().pixmap(24,24).toImage())
 
     def test_worker_failure_and_cancel_signals(self):
         task = Task('convert', dict(source='missing-file', folder=str(self.folder), format='MP4'))

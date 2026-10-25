@@ -1,9 +1,11 @@
-Handy Tools App 0.4.0
+Handy Tools App 0.4.1
 Linux / Python 3.12 / Qt offscreen:
-31 unittest checks passed plus all 10 FFmpeg output-format integration checks.
+33 unittest checks passed plus all 10 FFmpeg output-format integration checks.
 HEIC tiled primary-image decoding, source preservation, no overwrite and cancellation passed.
 Compact resizable launcher, saved size, independent windows, theme sharing and real Settings/update-check wiring passed.
 Updater: per-file download, immutable commit URLs, SHA-256, bounded network reads, path/symlink rejection, cancellation, owned-file deletion, app-file rollback and cache/user-file preservation passed.
 Windows-native launch, real YouTube download, restart/install on Windows and compiled EXE remain Windows validation items.
 Apple-inspired visual refresh rendered in both themes for launcher, tools and Settings, including the 600x280 minimum launcher size.
 External app tests: native architecture/package selection, self-updater exclusion, package checksums, download cache, cancellation, partial cleanup, installation marking, UAC-failure behavior and Linux AppImage installation. GenyConnect on-demand UI and maximize/restore/grip pulse covered. Native Windows/macOS installer execution remains platform validation work.
+
+0.4.1: output-folder access before completion, actual button click wiring, Unicode/spaced paths, Windows shell success/failure (mocked), missing files, desktop-service errors and Details toggling covered. Vector resolution/DPR/disabled state tested at 100/125/150/200/300 percent and icon colors verified after theme changes. Dark/light previews inspected. Actual Windows shell execution remains a Windows verification item.

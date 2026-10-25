@@ -5,6 +5,7 @@ from PySide6.QtCore import QThread,Signal
 from PySide6.QtWidgets import QDialog,QVBoxLayout,QLabel,QPushButton,QProgressBar
 from PySide6.QtCore import Qt
 from app import tool_styles
+from icons import set_button_icon, refresh_button_icons
 from external_apps import (get_release,select_package,download_package,install_package,app_storage,
                            launch_installed,InstallCancelled,cancelled)
 
@@ -45,8 +46,11 @@ class ExternalDialog(QDialog):
         self.status.setTextFormat(Qt.TextFormat.PlainText);box.addWidget(self.status)
         self.bar=QProgressBar();self.bar.setRange(0,0);self.bar.setTextVisible(False);self.bar.setFixedHeight(6);box.addWidget(self.bar)
         self.action=QPushButton('لغو دریافت');self.action.clicked.connect(self.action_clicked);box.addWidget(self.action)
+        set_button_icon(self.action, "close")
         self.apply_theme()
-    def apply_theme(self):self.setStyleSheet(tool_styles(self.manager.theme))
+    def apply_theme(self):
+        self.setStyleSheet(tool_styles(self.manager.theme))
+        refresh_button_icons(self, self.manager.theme)
     def start(self):
         if self.task:return
         self.pending_close=False;self.bar.setRange(0,0);self.action.setText('لغو دریافت');self.action.setEnabled(True)

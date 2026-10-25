@@ -10,40 +10,13 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QFrame, QLabe
     QProgressBar, QPlainTextEdit, QMessageBox, QScrollArea, QSizePolicy)
 from engine import FORMATS, IMAGES, tool
 from workers import Task, validate_url
+from icons import set_button_icon, refresh_button_icons, IconStyle
+from icons import IconComboBox as QComboBox
 
 DARK = dict(bg='#1c1c1e', side='#242426', card='#2c2c2e', hover='#3a3a3c', text='#f5f5f7',
             muted='#a1a1a6', border='#444446', accent='#0a84ff', ink='#ffffff', input='#242426', hero='#303034')
 LIGHT = dict(bg='#f5f5f7', side='#f2f2f4', card='#ffffff', hover='#e8e8ed', text='#1d1d1f',
              muted='#6e6e73', border='#d9d9df', accent='#007aff', ink='#ffffff', input='#ffffff', hero='#eaf3ff')
-
-
-def icon(kind, color='#b5a2ff', size=48):
-    """Small vector icons, painted at high resolution for Windows scaling."""
-    pm = QPixmap(size * 2, size * 2)
-    pm.fill(Qt.GlobalColor.transparent)
-    p = QPainter(pm)
-    p.setRenderHint(QPainter.RenderHint.Antialiasing)
-    p.scale(size * 2 / 48, size * 2 / 48)
-    p.setPen(QPen(QColor(color), 2.6, Qt.PenStyle.SolidLine, Qt.PenCapStyle.RoundCap, Qt.PenJoinStyle.RoundJoin))
-    if kind == 'convert':
-        p.drawRoundedRect(9, 7, 20, 27, 4, 4)
-        p.drawLine(16, 15, 23, 15); p.drawLine(16, 21, 23, 21)
-        p.drawLine(22, 40, 40, 40); p.drawLine(34, 34, 40, 40); p.drawLine(34, 46, 40, 40)
-        p.drawLine(39, 10, 39, 27); p.drawLine(33, 21, 39, 27); p.drawLine(45, 21, 39, 27)
-    elif kind == 'download':
-        p.drawRoundedRect(7, 6, 34, 27, 5, 5)
-        p.drawLine(24, 13, 24, 27); p.drawLine(18, 21, 24, 27); p.drawLine(30, 21, 24, 27)
-        p.drawLine(15, 41, 33, 41); p.drawLine(24, 33, 24, 41)
-    elif kind == 'home':
-        p.drawLine(8, 23, 24, 9); p.drawLine(24, 9, 40, 23)
-        p.drawLine(12, 20, 12, 39); p.drawLine(12, 39, 36, 39); p.drawLine(36, 39, 36, 20)
-        p.drawRect(21, 28, 7, 11)
-    else:
-        for x, y in ((8,8),(27,8),(8,27),(27,27)):
-            p.drawRoundedRect(x, y, 13, 13, 3, 3)
-    p.end()
-    pm.setDevicePixelRatio(2)
-    return QIcon(pm)
 
 
 def label(text, role='', wrap=False):
@@ -162,18 +135,42 @@ class ToolPage(QWidget):
         box.addLayout(actions)
         self.bar = QProgressBar(); self.bar.setTextVisible(False); self.bar.setValue(0)
         self.bar.setFixedHeight(6); box.addWidget(self.bar)
-        statusrow = QHBoxLayout()
-        self.status = label('آماده', 'muted', True)
+        result = QFrame(); result.setObjectName('resultPanel')
+        resultbox = QVBoxLayout(result); resultbox.setContentsMargins(18, 16, 18, 16); resultbox.setSpacing(12)
+        self.status = label('آماده', 'resultStatus', True)
         self.status.setTextFormat(Qt.TextFormat.PlainText)
-        statusrow.addWidget(self.status, 1)
-        self.open_button = button('باز کردن پوشهٔ خروجی', self.open_folder, 'link')
-        self.open_button.setEnabled(False); statusrow.addWidget(self.open_button)
-        box.addLayout(statusrow)
+        resultbox.addWidget(self.status)
+        self.output_name = label('فایل آماده‌شده اینجا نمایش داده می‌شود.', 'muted', True)
+        self.output_name.setTextFormat(Qt.TextFormat.PlainText)
+        self.output_name.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
+        self.output_name.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        resultbox.addWidget(self.output_name)
+        resultactions = QHBoxLayout(); resultactions.setSpacing(10)
+        self.open_button = button('پوشهٔ خروجی', self.open_folder)
+        self.open_file_button = button('باز کردن فایل', self.open_file)
+        self.open_file_button.setEnabled(False)
+        resultactions.addWidget(self.open_button); resultactions.addWidget(self.open_file_button)
         if kind == 'download':
-            self.details = button('نمایش جزئیات', self.toggle_log, 'link'); box.addWidget(self.details, 0, Qt.AlignmentFlag.AlignRight)
+            self.details = button('نمایش جزئیات', self.toggle_log)
+            self.details.setCheckable(True)
+            resultactions.addWidget(self.details)
+        resultactions.addStretch()
+        resultbox.addLayout(resultactions); box.addWidget(result)
+        if kind == 'download':
             self.log = QPlainTextEdit(); self.log.setReadOnly(True); self.log.setMaximumBlockCount(500)
-            self.log.setLayoutDirection(Qt.LayoutDirection.LeftToRight); self.log.setMaximumHeight(130)
+            self.log.setLayoutDirection(Qt.LayoutDirection.LeftToRight); self.log.setMaximumHeight(150)
             self.log.hide(); box.addWidget(self.log)
+            set_button_icon(self.details, 'details')
+            set_button_icon(self.update, 'refresh')
+        else:
+            set_button_icon(self.pick, 'upload'); set_button_icon(self.reset, 'refresh')
+        for control, glyph in ((self.browse, 'folder'), (self.open_button, 'folder'),
+                               (self.open_file_button, 'file'), (self.cancel_button, 'close'),
+                               (self.start_button, kind)):
+            set_button_icon(control, glyph)
+        self.folder.textChanged.connect(self.refresh_output_actions)
+        self.refresh_output_actions()
+        refresh_button_icons(self, window.theme)
         box.addStretch()
 
     def format_hint(self):
@@ -207,6 +204,7 @@ class ToolPage(QWidget):
     def toggle_log(self):
         show = self.log.isHidden(); self.log.setVisible(show)
         self.details.setText('بستن جزئیات' if show else 'نمایش جزئیات')
+        self.details.setChecked(show)
 
     def is_busy(self):
         return self.task is not None
@@ -228,7 +226,8 @@ class ToolPage(QWidget):
         else:
             options.update(url=self.url.text().strip(), quality=self.format.currentData())
             self.log.clear()
-        self.output = None; self.open_button.setEnabled(False)
+        self.output = None; self.refresh_output_actions()
+        self.output_name.setText('پس از پایان عملیات، فایل آماده‌شده اینجا نمایش داده می‌شود.')
         self.set_busy(True)
         self.progress(None, 'به‌روزرسانی موتور…' if update else 'آماده‌سازی ابزارها؛ دریافت اولیه ممکن است چند دقیقه طول بکشد…')
         task = Task('update' if update else self.kind, options, self)
@@ -252,19 +251,21 @@ class ToolPage(QWidget):
         self.bar.setRange(0, 0 if value is None else 100)
         if value is not None:
             self.bar.setValue(round(value))
-            self.status.setText(text + f'  •  {value:.0f}%')
+            self.status.setText(('دریافت کامل شد؛ در حال نهایی‌سازی فایل…' if self.kind == 'download' and text.startswith('دانلود') and value >= 100 else text) + f'  •  {value:.0f}%')
 
     def success(self, value):
         self.output = Path(value) if value else None
         self.progress(100, 'فایل آماده شد' if value else 'موتور دانلود به‌روز شد')
-        self.open_button.setEnabled(bool(value))
+        self.refresh_output_actions()
+        self.output_name.setText(self.output.name if self.output else 'موتور دانلود آمادهٔ استفاده است.')
+        self.output_name.setToolTip(str(self.output or ''))
         if value:
             self.window.record(self.kind, value)
 
     def failure(self, text):
         self.status.setText('عملیات انجام نشد؛ جزئیات خطا را بررسی کنید.')
         if self.kind == 'download':
-            self.log.appendPlainText(text); self.log.show(); self.details.setText('بستن جزئیات')
+            self.log.appendPlainText(text); self.log.show(); self.details.setText('بستن جزئیات'); self.details.setChecked(True)
         if not self.window.closing:
             QMessageBox.warning(self, 'خطا', text)
 
@@ -285,9 +286,31 @@ class ToolPage(QWidget):
             self.cancel_button.setEnabled(False)
             self.status.setText('در حال توقف…')
 
+    def refresh_output_actions(self):
+        folder = self.output.parent if self.output else Path(self.folder.text()) if self.folder.text().strip() else None
+        self.open_button.setEnabled(bool(folder and folder.is_dir()))
+        self.open_button.setToolTip(str(folder) if folder else 'ابتدا پوشهٔ خروجی را انتخاب کنید.')
+        self.open_file_button.setEnabled(bool(self.output and self.output.is_file()))
+
+    def open_path(self, path):
+        try:
+            if not path or not path.exists():
+                raise OSError('این مسیر دیگر وجود ندارد؛ ممکن است فایل یا پوشه جابه‌جا شده باشد.')
+            # Shell association handles Windows Unicode paths and Explorer reliably.
+            if sys.platform == 'win32':
+                os.startfile(str(path.resolve()))
+            elif not QDesktopServices.openUrl(QUrl.fromLocalFile(str(path.resolve()))):
+                raise OSError('سیستم‌عامل نتوانست این مسیر را باز کند.')
+        except OSError as exc:
+            self.refresh_output_actions()
+            QMessageBox.warning(self, 'باز کردن خروجی', str(exc))
+
     def open_folder(self):
-        if self.output:
-            QDesktopServices.openUrl(QUrl.fromLocalFile(str(self.output.parent)))
+        folder = self.output.parent if self.output else Path(self.folder.text()) if self.folder.text().strip() else None
+        self.open_path(folder)
+
+    def open_file(self):
+        self.open_path(self.output)
 
 
 def tool_styles(theme):
@@ -299,6 +322,10 @@ def tool_styles(theme):
         QLabel#muted { color: %(muted)s; font-size: 12px; }
         QLabel#pageTitle { font-size: 25px; font-weight: 600; letter-spacing: -0.5px; }
         QLabel#section { font-size: 12px; font-weight: 600; color: %(muted)s; }
+        QFrame#resultPanel { background: %(card)s; border: 1px solid %(border)s; border-radius: 16px; }
+        QFrame#resultPanel QLabel { background: transparent; }
+        QLabel#resultStatus { font-weight: 600; }
+        QPushButton:checked { background: %(hover)s; border-color: %(accent)s; }
         QFrame#panel { background: %(card)s; border: 1px solid %(border)s; border-radius: 18px; }
         QFrame#panel QWidget { background: transparent; }
         QFrame#separator { background: %(border)s; border: none; max-height: 1px; }
@@ -317,6 +344,7 @@ def tool_styles(theme):
         QFrame#panel QLineEdit, QFrame#panel QComboBox, QLineEdit, QComboBox { background: %(input)s; border: 1px solid %(border)s; border-radius: 10px; padding: 10px 12px; min-height: 20px; selection-background-color: %(accent)s; selection-color: white; }
         QLineEdit:focus, QComboBox:focus { border-color: %(accent)s; }
         QLineEdit:disabled, QComboBox:disabled { color: %(muted)s; }
+        QComboBox::down-arrow { image: none; width: 0px; height: 0px; }
         QComboBox::drop-down { border: none; width: 28px; }
         QComboBox QAbstractItemView { background: %(card)s; border: 1px solid %(border)s; border-radius: 10px; selection-background-color: %(accent)s; selection-color: white; padding: 8px; }
         QProgressBar { background: %(border)s; border: none; border-radius: 3px; }
@@ -332,7 +360,7 @@ def tool_styles(theme):
 def main():
     from launcher import Window
     app = QApplication(sys.argv)
-    app.setStyle('Fusion')
+    app.setStyle(IconStyle('Fusion'))
     app.setFont(QFont('Segoe UI', 10))
     window = Window(); window.show()
     return app.exec()

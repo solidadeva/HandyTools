@@ -14,7 +14,7 @@ from PySide6.QtWidgets import (QMainWindow, QWidget, QPushButton, QVBoxLayout,
 from app import ToolPage, tool_styles
 from engine import tool
 from workers import Task
-from icons import app_icon
+from icons import app_icon, refresh_button_icons
 
 from version import VERSION
 
@@ -342,6 +342,7 @@ class ToolWindow(QMainWindow):
 
     def apply_theme(self):
         self.setStyleSheet(tool_styles(self.manager.theme))
+        refresh_button_icons(self, self.manager.theme)
 
     def closeEvent(self,e):
         if self.page.is_busy():

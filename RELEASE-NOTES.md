@@ -1,12 +1,10 @@
-Handy Tools App v0.4.0
+Handy Tools App v0.4.1
 
-- Continuous superelliptic drawer corners and a sharp lower-right corner.
-- A small triangular resize grip with one soft opacity pulse every five seconds.
-- Premium minimize/maximize/restore/close controls; double-click the title to maximize.
-- No card frames: the selected app stays bright with a blue dot, and other icons dim.
-- Official GenyConnect icon with an initially not-installed state.
-- Click GenyConnect to download the correct official Windows x64/ARM64, macOS or Linux package on demand.
-- Package size and SHA-256 are checked before installation. Existing installations open directly.
-- Windows runs the official NSIS installer with normal UAC approval. macOS installs to the user's Applications folder; Linux installs the official AppImage under the user's app data.
+- Redesigned the output area in Easy Downloader and Easy Converter as a compact result card, with filename and real icon buttons for Output Folder, Open File and download Details.
+- Output Folder is available as soon as an existing destination is selected, including while downloading. Open File becomes available only after the completed file exists.
+- Use native Windows shell associations to open files and folders, preserve Unicode and spaces, and show a useful error when a path or file association fails.
+- Clarify the finalization phase after download progress reaches 100%.
+- Render original icons directly from vectors at the requested display resolution, including Windows 125%, 150%, 200% and 300% scaling. Add consistent theme-aware action icons across tools, Settings and GenyConnect installation.
+- Refine line weights, Settings glyph and dropdown/clear controls; export 1024px app artwork and a multi-resolution Windows ICO. The official GenyConnect logo is retained.
 
-Existing users: Settings → Check for updates. GenyConnect itself is not bundled with this update and is downloaded only when clicked. Windows native installation/UAC and macOS installation still require validation on those platforms. Installer and platform logic are covered by automated tests.
+Existing users: Settings → Check for updates → Download → Install and restart. Only changed files are downloaded.
